@@ -43,15 +43,15 @@ const connectionString = process.env.DATABASE_URL;
 // If you have downloaded the CA certificate from DO and set PG_SSL_CA_PATH to its path,
 // we'll use it and enable strict certificate verification. Otherwise we fall back to
 // rejectUnauthorized: false which works but is less secure.
-let sslOptions = { rejectUnauthorized: false };
-if (process.env.PG_SSL_CA_PATH) {
-  try {
-    const ca = fs.readFileSync(process.env.PG_SSL_CA_PATH).toString();
-    sslOptions = { rejectUnauthorized: true, ca };
-  } catch (err) {
-    console.warn('Could not read PG_SSL_CA_PATH, falling back to rejectUnauthorized:false', err.message);
-  }
-}
+// let sslOptions = { rejectUnauthorized: false };
+// if (process.env.PG_SSL_CA_PATH) {
+//   try {
+//     const ca = fs.readFileSync(process.env.PG_SSL_CA_PATH).toString();
+//     sslOptions = { rejectUnauthorized: true, ca };
+//   } catch (err) {
+//     console.warn('Could not read PG_SSL_CA_PATH, falling back to rejectUnauthorized:false', err.message);
+//   }
+// }
 
 const pool = new Pool({
   connectionString,
