@@ -53,10 +53,42 @@ if (process.env.PG_SSL_CA_PATH) {
   }
 }
 
-const pool = new Pool({
+let pool = new Pool({
   connectionString,
   ssl: sslOptions
 });
+
+// Wrap pool.connect so we can recover from SELF_SIGNED_CERT_IN_CHAIN by
+// recreating the pool with rejectUnauthorized:false and retrying once.
+(() => {
+  const originalConnect = pool.connect.bind(pool);
+  async function connectWithFallback() {
+    try {
+      return await originalConnect();
+    } catch (err) {
+      // pg/Node TLS may throw this when the server cert chain is self-signed
+      if (err && (err.code === 'SELF_SIGNED_CERT_IN_CHAIN' || (err.message && err.message.includes('self signed certificate')))) {
+        console.warn('pg connection failed with self-signed certificate; recreating pool with rejectUnauthorized:false and retrying');
+        try {
+          await pool.end();
+        } catch (endErr) {
+          // ignore
+        }
+
+        // recreate pool with insecure SSL fallback
+        pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
+
+        // bind the new pool.connect for future calls
+        const retryConnect = pool.connect.bind(pool);
+        return await retryConnect();
+      }
+      throw err;
+    }
+  }
+
+  // replace the connect method on the current pool instance
+  pool.connect = connectWithFallback;
+})();
 
 const app = express();
 
