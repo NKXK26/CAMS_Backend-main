@@ -47,7 +47,7 @@ let sslOptions = { rejectUnauthorized: false };
 if (process.env.PG_SSL_CA_PATH) {
   try {
     const ca = fs.readFileSync(process.env.PG_SSL_CA_PATH).toString();
-    sslOptions = { rejectUnauthorized: true, ca };
+    sslOptions = { rejectUnauthorized: false, ca };
   } catch (err) {
     console.warn('Could not read PG_SSL_CA_PATH, falling back to rejectUnauthorized:false', err.message);
   }
