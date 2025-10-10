@@ -37,26 +37,29 @@ const decrypt = (encryptedText) => {
   return decrypted;
 };
 
-const connectionString = process.env.DATABASE_URL;
+const { Pool } = require("pg");
+const fs = require("fs");
 
-// Configure SSL for DigitalOcean managed databases.
-// If you have downloaded the CA certificate from DO and set PG_SSL_CA_PATH to its path,
-// we'll use it and enable strict certificate verification. Otherwise we fall back to
-// rejectUnauthorized: false which works but is less secure.
-let sslOptions = { rejectUnauthorized: false };
-if (process.env.PG_SSL_CA_PATH) {
-  try {
-    const ca = fs.readFileSync(process.env.PG_SSL_CA_PATH).toString();
-    sslOptions = { rejectUnauthorized: false, ca };
-  } catch (err) {
-    console.warn('Could not read PG_SSL_CA_PATH, falling back to rejectUnauthorized:false', err.message);
-  }
+let sslOptions;
+
+try {
+  const ca = fs.readFileSync(process.env.PG_SSL_CA_PATH).toString();
+  sslOptions = { rejectUnauthorized: true, ca };
+  console.log("✅ Loaded CA certificate for secure SSL connection");
+} catch (err) {
+  console.warn("⚠️ Could not load CA certificate, falling back to insecure mode:", err.message);
+  sslOptions = { rejectUnauthorized: false };
 }
 
-let pool = new Pool({
-  connectionString,
-  ssl: sslOptions
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: sslOptions,
 });
+
+pool.connect()
+  .then(() => console.log("✅ PostgreSQL connected successfully"))
+  .catch(err => console.error("❌ PostgreSQL connection failed:", err));
+
 
 // Wrap pool.connect so we can recover from SELF_SIGNED_CERT_IN_CHAIN by
 // recreating the pool with rejectUnauthorized:false and retrying once.
