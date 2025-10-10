@@ -44,11 +44,10 @@ let sslOptions;
 
 try {
   const caPath = process.env.PG_SSL_CA_PATH;
-  const ca = fs.readFileSync(path.resolve(caPath)).toString().trim();
 
   sslOptions = {
     rejectUnauthorized: true,
-    ca: ca,
+    ca: process.env.DATABASE_CA_CERT,
   };
 
   console.log("✅ Loaded DigitalOcean CA certificate successfully.");
@@ -72,23 +71,23 @@ const app = express();
 
 const getDefaultAvatarBase64 = () => {
   return new Promise((resolve, reject) => {
-      const defaultAvatarPath = path.join(__dirname, '/public/avatar.png'); 
-      fs.readFile(defaultAvatarPath, (err, data) => {
-          if (err) {
-              reject(err);
-          } else {
-              const base64Data = data.toString('base64');
-              resolve(base64Data);
-          }
-      });
+    const defaultAvatarPath = path.join(__dirname, '/public/avatar.png');
+    fs.readFile(defaultAvatarPath, (err, data) => {
+      if (err) {
+        reject(err);
+      } else {
+        const base64Data = data.toString('base64');
+        resolve(base64Data);
+      }
+    });
   });
 };
 
 const generateRandomSixDigits = () => Math.floor(100000 + Math.random() * 900000);
 
-const failedAttempts = {}; 
+const failedAttempts = {};
 
-app.get('/', async(req, res) => {
+app.get('/', async (req, res) => {
   // console.log('DATABASE_URL:', process.env.DATABASE_URL);
   let client;
   try {
@@ -100,8 +99,8 @@ app.get('/', async(req, res) => {
     res.status(500).json({ message: 'Server error', success: false });
   } finally {
     if (client) {
-    client.release();
-  }
+      client.release();
+    }
   }
 });
 
@@ -113,8 +112,8 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-      fieldSize: 25 * 1024 * 1024, 
-      fileSize: 25 * 1024 * 1024  
+    fieldSize: 25 * 1024 * 1024,
+    fileSize: 25 * 1024 * 1024
   }
 });
 
@@ -136,7 +135,7 @@ app.post('/register', async (req, res) => {
   const { firstName, lastName, username, password, email, uphoneno } = req.body;
   let client;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
-  
+
   try {
     client = await pool.connect();
 
@@ -147,13 +146,13 @@ app.post('/register', async (req, res) => {
       `,
       values: [username, email]
     };
-    
+
     const checkResult = await client.query(checkUserQuery);
-    
+
     if (checkResult.rows.length > 0) {
       return res.status(409).json({ message: 'Username or email already exists', success: false });
     }
-    
+
     // Encrypt the password
     const encryptedPassword = encrypt(password);
     const defaultAvatarBase64 = await getDefaultAvatarBase64();
@@ -169,7 +168,7 @@ app.post('/register', async (req, res) => {
       `,
       values: [
         username,
-        encryptedPassword, 
+        encryptedPassword,
         email,
         "Mr.",
         'Customer',
@@ -177,24 +176,24 @@ app.post('/register', async (req, res) => {
         'Active',
         defaultAvatarBase64,
         firstName,
-        lastName, 
+        lastName,
         '1',
         uphoneno
       ]
     };
-    
+
     const userQueryResult = await client.query(insertUserQuery);
 
     const userid = userQueryResult.rows[0].userid;
 
-    const registerAuditTrail = await client.query (
-        `INSERT INTO audit_trail (
+    const registerAuditTrail = await client.query(
+      `INSERT INTO audit_trail (
             entityid, timestamp, entitytype, actiontype, action, userid, username
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [
-          userid, timestamp, "Users", "POST", "Register An Account", userid, username
-        ]
+      [
+        userid, timestamp, "Users", "POST", "Register An Account", userid, username
+      ]
     );
 
     res.status(201).json({ message: 'User registered successfully', success: true });
@@ -238,7 +237,7 @@ app.post('/login', async (req, res) => {
     try {
       const decryptedPassword = decrypt(user.password);
       const passwordMatch = (password === decryptedPassword);
-      
+
       if (passwordMatch) {
         delete failedAttempts[username]; // or email
         await client.query(`
@@ -247,14 +246,14 @@ app.post('/login', async (req, res) => {
 
         const userid = user.userid;
 
-        const loginAuditTrail = await client.query (
-            `INSERT INTO audit_trail (
+        const loginAuditTrail = await client.query(
+          `INSERT INTO audit_trail (
                 entityid, timestamp, entitytype, actiontype, action, userid, username
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [
-              userid, timestamp, "Users", "POST", "Login", userid, username
-            ]
+          [
+            userid, timestamp, "Users", "POST", "Login", userid, username
+          ]
         );
 
         return res.status(200).json({
@@ -266,7 +265,7 @@ app.post('/login', async (req, res) => {
         });
       } else {
         const now = Date.now();
-        
+
         if (!failedAttempts[username]) {
           failedAttempts[username] = { count: 1, lastAttemptTime: now };
         } else {
@@ -275,14 +274,14 @@ app.post('/login', async (req, res) => {
         }
 
         if (failedAttempts[username].count >= 5) {
-          
+
           await client.query(`
             UPDATE users SET uactivation = 'Inactive'
             WHERE username = $1 OR uemail = $1
           `, [username]);
 
           delete failedAttempts[username];
-          
+
           return res.status(403).json({ message: 'Account locked due to too many failed login attempts.', success: false });
         }
         return res.status(401).json({ message: 'Invalid username or password', success: false });
@@ -309,22 +308,22 @@ app.post('/logout', async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+
     const query = {
       text: `UPDATE users SET ustatus = 'logout' WHERE userid = $1`,
       values: [userid]
     };
-    
+
     await client.query(query);
 
-    const usernameQuery = await client.query (
+    const usernameQuery = await client.query(
       `SELECT username FROM users WHERE userid = $1`,
       [userid]
     );
 
     const username = usernameQuery.rows[0].username;
 
-    const logoutAuditTrail = await client.query (
+    const logoutAuditTrail = await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
       )
@@ -347,91 +346,91 @@ app.post('/logout', async (req, res) => {
 
 // Google Login
 app.post("/google-login", async (req, res) => {
-    const { token } = req.body;
-    
-    // Check if token exists
-    if (!token) {
-        return res.status(400).json({ success: false, message: "No token provided" });
+  const { token } = req.body;
+
+  // Check if token exists
+  if (!token) {
+    return res.status(400).json({ success: false, message: "No token provided" });
+  }
+
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+
+  try {
+    // Get user info from Google
+    const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      const googleError = await response.json();
+      console.error("Google API error:", googleError);
+      return res.status(401).json({
+        success: false,
+        message: "Failed to verify Google token",
+        details: googleError
+      });
     }
-    
-    const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    
+
+    const googleUser = await response.json();
+    console.log("Google User Data:", googleUser);
+
+    if (!googleUser.email) {
+      return res.status(401).json({ success: false, message: "Invalid Google token or missing email" });
+    }
+
+    const { email, given_name, family_name, picture } = googleUser;
+
+    const client = await pool.connect();
     try {
-        // Get user info from Google
-        const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        
-        if (!response.ok) {
-            const googleError = await response.json();
-            console.error("Google API error:", googleError);
-            return res.status(401).json({ 
-                success: false, 
-                message: "Failed to verify Google token", 
-                details: googleError 
-            });
-        }
-        
-        const googleUser = await response.json();
-        console.log("Google User Data:", googleUser);
-        
-        if (!googleUser.email) {
-            return res.status(401).json({ success: false, message: "Invalid Google token or missing email" });
-        }
-        
-        const { email, given_name, family_name, picture } = googleUser;
-        
-        const client = await pool.connect();
+      // Check if user exists
+      const result = await client.query(
+        "SELECT userid, usergroup, uactivation, username FROM users WHERE uemail = $1",
+        [email]
+      );
+
+      let username;
+
+      if (result.rows.length > 0) {
+        // Existing user, update login status
+        const { userid, usergroup, uactivation, username: existingUsername } = result.rows[0];
+
+        username = existingUsername;
+        await client.query("UPDATE users SET ustatus = 'login' WHERE uemail = $1", [email]);
+
         try {
-            // Check if user exists
-            const result = await client.query(
-                "SELECT userid, usergroup, uactivation, username FROM users WHERE uemail = $1",
-                [email]
-            );
-            
-            let username;
-            
-            if (result.rows.length > 0) {
-                // Existing user, update login status
-                const { userid, usergroup, uactivation, username: existingUsername } = result.rows[0];
-                
-                username = existingUsername;
-                await client.query("UPDATE users SET ustatus = 'login' WHERE uemail = $1", [email]);
-                
-                try {
-                    const googleLoginAuditTrail = await client.query(
-                        `INSERT INTO audit_trail (
+          const googleLoginAuditTrail = await client.query(
+            `INSERT INTO audit_trail (
                             entityid, timestamp, entitytype, actiontype, action, userid, username
                         )
                         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                        [
-                            userid, timestamp, "Users", "POST", "Google Login", userid, existingUsername
-                        ]
-                    );
-                } catch (auditError) {
-                    console.error("Error logging audit trail:", auditError);
-                    // Continue even if audit trail fails
-                }
-                
-                return res.status(200).json({
-                    success: true,
-                    message: "Google Login Successful",
-                    userid: userid,
-                    usergroup: usergroup,
-                    uactivation: uactivation,
-                    username,
-                });
-            } else {
-                // New user registration
-                try {
-                    const randomSixDigits = generateRandomSixDigits();
-                    username = given_name ? `${given_name}_${randomSixDigits}` : `user_${randomSixDigits}`;
-                    
-                    // Generate a random password for Google login users and encrypt it
-                    const randomPassword = crypto.randomBytes(16).toString('hex');
-                    const encryptedPassword = encrypt(randomPassword);
-            
-                    const insertQuery = `
+            [
+              userid, timestamp, "Users", "POST", "Google Login", userid, existingUsername
+            ]
+          );
+        } catch (auditError) {
+          console.error("Error logging audit trail:", auditError);
+          // Continue even if audit trail fails
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: "Google Login Successful",
+          userid: userid,
+          usergroup: usergroup,
+          uactivation: uactivation,
+          username,
+        });
+      } else {
+        // New user registration
+        try {
+          const randomSixDigits = generateRandomSixDigits();
+          username = given_name ? `${given_name}_${randomSixDigits}` : `user_${randomSixDigits}`;
+
+          // Generate a random password for Google login users and encrypt it
+          const randomPassword = crypto.randomBytes(16).toString('hex');
+          const encryptedPassword = encrypt(randomPassword);
+
+          const insertQuery = `
                         INSERT INTO users (
                             uemail, ufirstname, ulastname, uimage, 
                             utitle, ustatus, usergroup, uactivation, 
@@ -440,73 +439,73 @@ app.post("/google-login", async (req, res) => {
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
                         RETURNING userid
                     `;
-                    
-                    const insertValues = [
-                        email, 
-                        given_name || '', 
-                        family_name || '', 
-                        picture || '', 
-                        'Mr.', // Default title
-                        'login', // Status
-                        'Customer', // User group
-                        'Active', // Activation status
-                        username, 
-                        encryptedPassword // Encrypted password
-                    ];
-                
-                    const insertResult = await client.query(insertQuery, insertValues);
-                    
-                    const newuserid = insertResult.rows[0].userid;
-                    
-                    try {
-                        await client.query(
-                            `INSERT INTO audit_trail (
+
+          const insertValues = [
+            email,
+            given_name || '',
+            family_name || '',
+            picture || '',
+            'Mr.', // Default title
+            'login', // Status
+            'Customer', // User group
+            'Active', // Activation status
+            username,
+            encryptedPassword // Encrypted password
+          ];
+
+          const insertResult = await client.query(insertQuery, insertValues);
+
+          const newuserid = insertResult.rows[0].userid;
+
+          try {
+            await client.query(
+              `INSERT INTO audit_trail (
                                 entityid, timestamp, entitytype, actiontype, action, userid, username
                             )
                             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                            [
-                                newuserid, timestamp, "Users", "POST", "Google Registration", newuserid, username
-                            ]
-                        );
-                    } catch (auditError) {
-                        console.error("Error logging registration audit trail:", auditError);
-                    }
-                    
-                    return res.status(201).json({
-                        success: true,
-                        message: "Google Login Successful, new user created",
-                        userid: newuserid,
-                        usergroup: "Customer",
-                        uactivation: "Active",
-                        username,
-                    });
-                } catch (insertError) {
-                    console.error("Error creating new user:", insertError);
-                    return res.status(500).json({ 
-                        success: false, 
-                        message: "Failed to create new user account", 
-                        details: insertError.message 
-                    });
-                }
-            }
-        } finally {
-            client.release();
+              [
+                newuserid, timestamp, "Users", "POST", "Google Registration", newuserid, username
+              ]
+            );
+          } catch (auditError) {
+            console.error("Error logging registration audit trail:", auditError);
+          }
+
+          return res.status(201).json({
+            success: true,
+            message: "Google Login Successful, new user created",
+            userid: newuserid,
+            usergroup: "Customer",
+            uactivation: "Active",
+            username,
+          });
+        } catch (insertError) {
+          console.error("Error creating new user:", insertError);
+          return res.status(500).json({
+            success: false,
+            message: "Failed to create new user account",
+            details: insertError.message
+          });
         }
-    } catch (error) {
-        console.error("Google Login Error:", error);
-        return res.status(500).json({ 
-            success: false, 
-            message: "Google Login Failed", 
-            details: error.message 
-        });
+      }
+    } finally {
+      client.release();
     }
+  } catch (error) {
+    console.error("Google Login Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Google Login Failed",
+      details: error.message
+    });
+  }
 });
 
 //Fetch list of customers
 app.get('/users/customers', async (req, res) => {
   const { userid } = req.query;
   let client;
-  
+
   try {
     client = await pool.connect();
 
@@ -529,7 +528,7 @@ app.get('/users/customers', async (req, res) => {
         FROM users
         WHERE usergroup = 'Customer'
       `
-      ); 
+      );
     } else {
       result = await client.query(`
         SELECT userid, username, uimage, ufirstname, ulastname, uemail, uphoneno, ucountry, uzipcode, uactivation, ustatus, ugender, utitle
@@ -537,10 +536,10 @@ app.get('/users/customers', async (req, res) => {
         WHERE usergroup = 'Customer'
         AND clusterid = $1
       `,
-      [clusterid]
+        [clusterid]
       );
     }
-    
+
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching customers:', err);
@@ -549,7 +548,7 @@ app.get('/users/customers', async (req, res) => {
     if (client) {
       client.release();
     }
-  } 
+  }
 });
 
 // Fetch list of owners
@@ -577,7 +576,7 @@ app.get('/users/owners', async (req, res) => {
 app.get('/users/moderators', async (req, res) => {
   const { userid } = req.query;
   let client;
-  
+
   try {
     client = await pool.connect();
 
@@ -612,7 +611,7 @@ app.get('/users/moderators', async (req, res) => {
         [clusterid]
       );
     }
-    
+
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching moderators:', err);
@@ -716,16 +715,16 @@ app.post('/users/createModerator', async (req, res) => {
 
     const entityid = createModeratorResult.rows[0].userid;
 
-    const createModeratorAuditTrail = await client.query (
-        `INSERT INTO audit_trail (
+    const createModeratorAuditTrail = await client.query(
+      `INSERT INTO audit_trail (
             entityid, timestamp, entitytype, actiontype, action, userid, username
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [
-          entityid, timestamp, "Users", "POST", "Create New Moderator", creatorid, creatorUsername
-        ]
+      [
+        entityid, timestamp, "Users", "POST", "Create New Moderator", creatorid, creatorUsername
+      ]
     );
-    
+
     res.status(201).json({ message: "User registered successfully", success: true });
   } catch (err) {
     console.error("Error during registration:", err);
@@ -741,10 +740,10 @@ app.post('/users/createModerator', async (req, res) => {
 app.put('/users/updateUser/:userid', async (req, res) => {
   const { userid } = req.params;
   const { firstName, lastName, clusterid, username, email, phoneNo, country, zipCode, creatorid, creatorUsername } = req.body;
-  
+
   let client;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
-  
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+
   try {
     client = await pool.connect();
 
@@ -788,18 +787,18 @@ app.put('/users/updateUser/:userid', async (req, res) => {
 app.delete('/users/removeUser/:userid', async (req, res) => {
   const { userid } = req.params;
   const { creatorid, creatorUsername } = req.query;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   try {
     client = await pool.connect();
-    
+
     // Check if the user exists
     const userCheck = await client.query(
       'SELECT userid FROM users WHERE userid = $1',
       [userid]
     );
-    
+
     if (userCheck.rows.length === 0) {
       return res.status(404).json({ message: 'User not found', success: false });
     }
@@ -832,7 +831,7 @@ app.delete('/users/removeUser/:userid', async (req, res) => {
 app.put('/users/suspenduser/:userid', async (req, res) => {
   const { userid } = req.params;
   const { creatorid, creatorUsername } = req.query;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   // Validate userid
@@ -881,7 +880,7 @@ app.put('/users/suspenduser/:userid', async (req, res) => {
 app.put('/users/activateUser/:userid', async (req, res) => {
   const { userid } = req.params;
   const { creatorid, creatorUsername } = req.query;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   // Validate userid
@@ -929,78 +928,78 @@ app.put('/users/activateUser/:userid', async (req, res) => {
 // Properties Listing
 app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, res) => {
   const {
-      username,
-      propertyPrice,
-      propertyAddress,
-      clusterName,
-      categoryName,
-      propertyBedType,
-      propertyGuestPaxNo,
-      propertyDescription,
-      nearbyLocation,
-      facilities,
-      weekendRate,
-      specialEventRate,
-      specialEventStartDate,
-      specialEventEndDate,
-      earlyBirdDiscountRate,
-      lastMinuteDiscountRate,
-      isSpecialEventEnabled
+    username,
+    propertyPrice,
+    propertyAddress,
+    clusterName,
+    categoryName,
+    propertyBedType,
+    propertyGuestPaxNo,
+    propertyDescription,
+    nearbyLocation,
+    facilities,
+    weekendRate,
+    specialEventRate,
+    specialEventStartDate,
+    specialEventEndDate,
+    earlyBirdDiscountRate,
+    lastMinuteDiscountRate,
+    isSpecialEventEnabled
   } = req.body;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
-  
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+
   if (!req.files || req.files.length < 4) {
-      return res.status(400).json({ error: 'Please upload at least 4 property images.' });
+    return res.status(400).json({ error: 'Please upload at least 4 property images.' });
   }
-  
+
   let client;
   try {
-      client = await pool.connect();
-      await client.query('BEGIN');
-      // Fetch user ID and userGroup for property owner
-      const userResult = await client.query(
-          'SELECT userid, usergroup FROM users WHERE username = $1',
-          [username]
-      );
-    
-      if (userResult.rows.length === 0) {
-          return res.status(404).json({ error: 'User not found' });
+    client = await pool.connect();
+    await client.query('BEGIN');
+    // Fetch user ID and userGroup for property owner
+    const userResult = await client.query(
+      'SELECT userid, usergroup FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const { userid, usergroup } = userResult.rows[0];
+    // Determine propertyStatus based on userGroup
+    const propertyStatus = usergroup === 'Administrator' ? 'Available' : 'Pending';
+
+    // WITH THIS RESIZING CODE:
+    const base64Images = await Promise.all(req.files.map(async (file) => {
+      try {
+        // Resize image to max dimensions while preserving aspect ratio
+        const resizedImageBuffer = await sharp(file.buffer)
+          .resize({
+            width: 800,
+            height: 600,
+            fit: 'inside', // preserves aspect ratio
+            withoutEnlargement: true // don't enlarge images smaller than these dimensions
+          })
+          .jpeg({
+            quality: 80, // compress quality (0-100)
+            progressive: true // create progressive JPEG for better loading
+          })
+          .toBuffer();
+
+        return resizedImageBuffer.toString('base64');
+      } catch (err) {
+        console.error('Image processing error:', err);
+        // Return original image as fallback if processing fails
+        return file.buffer.toString('base64');
       }
-    
-      const { userid, usergroup } = userResult.rows[0];
-      // Determine propertyStatus based on userGroup
-      const propertyStatus = usergroup === 'Administrator' ? 'Available' : 'Pending';
-      
-      // WITH THIS RESIZING CODE:
-      const base64Images = await Promise.all(req.files.map(async (file) => {
-        try {
-          // Resize image to max dimensions while preserving aspect ratio
-          const resizedImageBuffer = await sharp(file.buffer)
-            .resize({
-              width: 800,
-              height: 600,
-              fit: 'inside', // preserves aspect ratio
-              withoutEnlargement: true // don't enlarge images smaller than these dimensions
-            })
-            .jpeg({ 
-              quality: 80, // compress quality (0-100)
-              progressive: true // create progressive JPEG for better loading
-            })
-            .toBuffer();
-            
-          return resizedImageBuffer.toString('base64');
-        } catch (err) {
-          console.error('Image processing error:', err);
-          // Return original image as fallback if processing fails
-          return file.buffer.toString('base64');
-        }
-      }));
-      
-      const concatenatedImages = base64Images.join(',');
-      
-      // Insert rate
-      const rateResult = await client.query(
-          `INSERT INTO rate (
+    }));
+
+    const concatenatedImages = base64Images.join(',');
+
+    // Insert rate
+    const rateResult = await client.query(
+      `INSERT INTO rate (
               normalrate, 
               weekendrate,
               specialeventrate,
@@ -1013,59 +1012,59 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           )
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           RETURNING rateid`,
-          [
-              propertyPrice,
-              weekendRate,
-              specialEventRate,
-              earlyBirdDiscountRate,
-              lastMinuteDiscountRate,
-              isSpecialEventEnabled ? specialEventStartDate : null,  // Use null if disabled
-              isSpecialEventEnabled ? specialEventEndDate : null,    // Use null if disabled
-              userid,
-              timestamp
-          ]
-      );
-    
-      const rateID = rateResult.rows[0].rateid;
-      let clusterID;
-      const existingCluster = await client.query(
-          'SELECT clusterid FROM clusters WHERE clustername = $1',
-          [clusterName]
-      );
-      
-      if (existingCluster.rows.length > 0) {
-          clusterID = existingCluster.rows[0].clusterid;
-      } else {
-          const clusterResult = await client.query(
-              `INSERT INTO clusters (clustername, clusterstate, clusterprovince)
+      [
+        propertyPrice,
+        weekendRate,
+        specialEventRate,
+        earlyBirdDiscountRate,
+        lastMinuteDiscountRate,
+        isSpecialEventEnabled ? specialEventStartDate : null,  // Use null if disabled
+        isSpecialEventEnabled ? specialEventEndDate : null,    // Use null if disabled
+        userid,
+        timestamp
+      ]
+    );
+
+    const rateID = rateResult.rows[0].rateid;
+    let clusterID;
+    const existingCluster = await client.query(
+      'SELECT clusterid FROM clusters WHERE clustername = $1',
+      [clusterName]
+    );
+
+    if (existingCluster.rows.length > 0) {
+      clusterID = existingCluster.rows[0].clusterid;
+    } else {
+      const clusterResult = await client.query(
+        `INSERT INTO clusters (clustername, clusterstate, clusterprovince)
                VALUES ($1, $2, $3)
                RETURNING clusterid`,
-              [clusterName, "DefaultState", "DefaultProvince"]
-          );
-          clusterID = clusterResult.rows[0].clusterid;
-      }
-    
-      let categoryID;
-      const existingCategory = await client.query(
-          'SELECT categoryid FROM categories WHERE categoryname = $1',
-          [categoryName]
+        [clusterName, "DefaultState", "DefaultProvince"]
       );
-    
-      if (existingCategory.rows.length > 0) {
-          categoryID = existingCategory.rows[0].categoryid;
-      } else {
-          const categoryResult = await client.query(
-              `INSERT INTO categories (categoryname, availablestates)
+      clusterID = clusterResult.rows[0].clusterid;
+    }
+
+    let categoryID;
+    const existingCategory = await client.query(
+      'SELECT categoryid FROM categories WHERE categoryname = $1',
+      [categoryName]
+    );
+
+    if (existingCategory.rows.length > 0) {
+      categoryID = existingCategory.rows[0].categoryid;
+    } else {
+      const categoryResult = await client.query(
+        `INSERT INTO categories (categoryname, availablestates)
                VALUES ($1, $2)
                RETURNING categoryid`,
-              [categoryName, "DefaultStates"]
-          );
-          categoryID = categoryResult.rows[0].categoryid;
-      }
-    
-      // Insert property
-      const propertyListingResult = await client.query(
-          `INSERT INTO properties (
+        [categoryName, "DefaultStates"]
+      );
+      categoryID = categoryResult.rows[0].categoryid;
+    }
+
+    // Insert property
+    const propertyListingResult = await client.query(
+      `INSERT INTO properties (
               propertyno, userid, clusterid, categoryid, rateid,
               propertydescription, propertyaddress,
               propertybedtype, propertybedimage, propertyguestpaxno, propertyimage,
@@ -1073,38 +1072,38 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
           )
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
           RETURNING propertyid`,
-          [
-              "1", userid, clusterID, categoryID, rateID,
-              propertyDescription, propertyAddress,
-              propertyBedType, "1", propertyGuestPaxNo, concatenatedImages,
-              propertyStatus, nearbyLocation, "0", facilities, "policies"
-          ]
-      );
+      [
+        "1", userid, clusterID, categoryID, rateID,
+        propertyDescription, propertyAddress,
+        propertyBedType, "1", propertyGuestPaxNo, concatenatedImages,
+        propertyStatus, nearbyLocation, "0", facilities, "policies"
+      ]
+    );
 
-      const propertyid = propertyListingResult.rows[0].propertyid;
-      
-      await client.query('COMMIT');
+    const propertyid = propertyListingResult.rows[0].propertyid;
 
-      if (usergroup === "Administrator") {
-        await client.query(
-          `INSERT INTO audit_trail (
+    await client.query('COMMIT');
+
+    if (usergroup === "Administrator") {
+      await client.query(
+        `INSERT INTO audit_trail (
               entityid, timestamp, entitytype, actiontype, action, userid, username
           ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [propertyid, timestamp, "Properties", "POST", "Create New Property", userid, username]
-        );
-      }
+        [propertyid, timestamp, "Properties", "POST", "Create New Property", userid, username]
+      );
+    }
 
-      res.status(201).json({ message: 'Property created successfully', propertyid });
+    res.status(201).json({ message: 'Property created successfully', propertyid });
   } catch (err) {
-      if (client) {
-        await client.query('ROLLBACK');
-      }
-      console.error('Error inserting property: ', err);
-      res.status(500).json({ error: 'Internal Server Error', details: err.message });
+    if (client) {
+      await client.query('ROLLBACK');
+    }
+    console.error('Error inserting property: ', err);
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
   } finally {
-      if (client) {
-        client.release();
-      }
+    if (client) {
+      client.release();
+    }
   }
 });
 
@@ -1113,7 +1112,7 @@ app.get('/product', async (req, res) => {
   let client;
   try {
     client = await pool.connect();
-    
+
     const query = `
       SELECT DISTINCT ON (p.propertyid) p.*, u.username, u.uimage, r.*, c.categoryname, cl.clustername, res.reservationid, res.checkindatetime, res.checkoutdatetime, res.reservationblocktime, res.reservationstatus
       FROM properties p
@@ -1124,37 +1123,37 @@ app.get('/product', async (req, res) => {
       LEFT JOIN reservation res ON p.propertyid = res.propertyid
       WHERE p.propertystatus = 'Available'
     `;
-    
+
     const result = await client.query(query);
-    
+
     if (result.rows.length > 0) {
       console.log('Sample property object from database:');
       console.log(JSON.stringify(result.rows[0], null, 2));
     } else {
       console.log('No properties found');
     }
-    
+
     const properties = result.rows.map(property => {
-      console.log(`Property ID ${property.propertyid} - Original image data:`, 
-                  property.propertyimage ? property.propertyimage.substring(0, 50) + '...' : 'No image');
-      
+      console.log(`Property ID ${property.propertyid} - Original image data:`,
+        property.propertyimage ? property.propertyimage.substring(0, 50) + '...' : 'No image');
+
       const processedProperty = {
-      ...property,
+        ...property,
         propertyimage: property.propertyimage ? property.propertyimage.split(',') : []
       };
-      
-      console.log(`Property ID ${property.propertyid} - Processed image array length:`, 
-                  processedProperty.propertyimage.length);
-      
+
+      console.log(`Property ID ${property.propertyid} - Processed image array length:`,
+        processedProperty.propertyimage.length);
+
       return processedProperty;
     });
-    
+
     if (properties.length > 0) {
       console.log('Sample processed property object:');
-      const sampleProperty = {...properties[0]};
+      const sampleProperty = { ...properties[0] };
       if (sampleProperty.propertyimage && sampleProperty.propertyimage.length > 0) {
-        sampleProperty.propertyimage = [`${sampleProperty.propertyimage[0].substring(0, 50)}... (truncated)`, 
-                                       `and ${sampleProperty.propertyimage.length - 1} more images`];
+        sampleProperty.propertyimage = [`${sampleProperty.propertyimage[0].substring(0, 50)}... (truncated)`,
+        `and ${sampleProperty.propertyimage.length - 1} more images`];
       }
       console.log(JSON.stringify(sampleProperty, null, 2));
     }
@@ -1181,7 +1180,7 @@ app.get('/propertiesListingTable', async (req, res) => {
   let client;
   try {
     client = await pool.connect();
-    
+
     const userResult = await client.query(
       'SELECT userid, usergroup, clusterid FROM users WHERE username = $1',
       [username]
@@ -1279,7 +1278,7 @@ app.get('/propertiesListingTable', async (req, res) => {
         JOIN rate r ON p.rateid = r.rateid
         JOIN clusters cl ON p.clusterid = cl.clusterid
         JOIN categories c ON p.categoryid = c.categoryid
-      `; 
+      `;
     }
 
     const result = await client.query(query, params);
@@ -1297,74 +1296,74 @@ app.get('/propertiesListingTable', async (req, res) => {
     if (client) {
       client.release();
     }
-  } 
+  }
 });
 
 // Update an existing property listing by property ID
 app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), async (req, res) => {
-    const { propertyid } = req.params;
-    const {
-        propertyAddress, propertyPrice, propertyDescription, nearbyLocation,
-        propertyBedType, propertyGuestPaxNo, clusterName, categoryName, facilities,
-        username, weekendRate, specialEventRate, specialEventStartDate, specialEventEndDate,
-        earlyBirdDiscountRate, lastMinuteDiscountRate
-    } = req.body;
-    const { creatorid, creatorUsername } = req.query;
-    const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
+  const { propertyid } = req.params;
+  const {
+    propertyAddress, propertyPrice, propertyDescription, nearbyLocation,
+    propertyBedType, propertyGuestPaxNo, clusterName, categoryName, facilities,
+    username, weekendRate, specialEventRate, specialEventStartDate, specialEventEndDate,
+    earlyBirdDiscountRate, lastMinuteDiscountRate
+  } = req.body;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
-    const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
+  const removedImages = req.body.removedImages ? JSON.parse(req.body.removedImages) : [];
 
-    let client;
-    try {
-        client = await pool.connect();
+  let client;
+  try {
+    client = await pool.connect();
 
-        // First get the user's group
-        const userResult = await client.query(
-            'SELECT usergroup FROM users WHERE username = $1',
-            [username]
-        );
+    // First get the user's group
+    const userResult = await client.query(
+      'SELECT usergroup FROM users WHERE username = $1',
+      [username]
+    );
 
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
-        const usergroup = userResult.rows[0].usergroup;
+    const usergroup = userResult.rows[0].usergroup;
 
-        // Fetch the current status of the property
-        const propertyResult = await client.query(
-            'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid, facilities FROM properties WHERE propertyid = $1',
-            [propertyid]
-        );
+    // Fetch the current status of the property
+    const propertyResult = await client.query(
+      'SELECT propertystatus, propertyimage, rateid, clusterid, categoryid, facilities FROM properties WHERE propertyid = $1',
+      [propertyid]
+    );
 
-        if (propertyResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Property not found' });
-        }
+    if (propertyResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
 
-        let existingImages = propertyResult.rows[0].propertyimage
-            ? propertyResult.rows[0].propertyimage.split(',')
-            : [];
+    let existingImages = propertyResult.rows[0].propertyimage
+      ? propertyResult.rows[0].propertyimage.split(',')
+      : [];
 
-        // Filter out removed images
-        existingImages = existingImages.filter(image => !removedImages.includes(image));
+    // Filter out removed images
+    existingImages = existingImages.filter(image => !removedImages.includes(image));
 
-        // Add new uploaded images if any
-        if (req.files && req.files.length > 0) {
-            const newBase64Images = req.files.map(file => file.buffer.toString('base64'));
-            existingImages = [...existingImages, ...newBase64Images];
-        }
+    // Add new uploaded images if any
+    if (req.files && req.files.length > 0) {
+      const newBase64Images = req.files.map(file => file.buffer.toString('base64'));
+      existingImages = [...existingImages, ...newBase64Images];
+    }
 
-        const concatenatedImages = existingImages.join(',');
+    const concatenatedImages = existingImages.join(',');
 
-        // Determine the new status
-        let newStatus = propertyResult.rows[0].propertystatus;
-      
-        if (usergroup === "Moderator") {
-            newStatus = "Pending";
-        }
+    // Determine the new status
+    let newStatus = propertyResult.rows[0].propertystatus;
 
-        // Update the property details
-        await client.query(
-            `UPDATE properties 
+    if (usergroup === "Moderator") {
+      newStatus = "Pending";
+    }
+
+    // Update the property details
+    await client.query(
+      `UPDATE properties 
              SET propertydescription = $1, 
                  propertyaddress = $2, 
                  nearbylocation = $3, 
@@ -1374,21 +1373,21 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
                  facilities = $7,
                  propertystatus = $8
              WHERE propertyid = $9`,
-            [
-                propertyDescription,
-                propertyAddress,
-                nearbyLocation,
-                propertyBedType,
-                propertyGuestPaxNo,
-                concatenatedImages,
-                facilities,
-                newStatus,
-                propertyid
-            ]
-        );
+      [
+        propertyDescription,
+        propertyAddress,
+        nearbyLocation,
+        propertyBedType,
+        propertyGuestPaxNo,
+        concatenatedImages,
+        facilities,
+        newStatus,
+        propertyid
+      ]
+    );
 
-        await client.query(
-            `UPDATE rate 
+    await client.query(
+      `UPDATE rate 
              SET normalrate = $1,
                  weekendrate = $2,
                  specialeventrate = $3,
@@ -1397,48 +1396,48 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
                  startdate = $6,
                  enddate = $7
              WHERE rateid = $8`,
-            [
-                propertyPrice,
-                weekendRate,
-                specialEventRate,
-                earlyBirdDiscountRate,
-                lastMinuteDiscountRate,
-                specialEventStartDate,
-                specialEventEndDate,
-                propertyResult.rows[0].rateid
-            ]
-        );
+      [
+        propertyPrice,
+        weekendRate,
+        specialEventRate,
+        earlyBirdDiscountRate,
+        lastMinuteDiscountRate,
+        specialEventStartDate,
+        specialEventEndDate,
+        propertyResult.rows[0].rateid
+      ]
+    );
 
-        await client.query(
-            `UPDATE clusters 
+    await client.query(
+      `UPDATE clusters 
              SET clustername = $1 
              WHERE clusterid = $2`,
-            [clusterName, propertyResult.rows[0].clusterid]
-        );
+      [clusterName, propertyResult.rows[0].clusterid]
+    );
 
-        await client.query(
-            `UPDATE categories 
+    await client.query(
+      `UPDATE categories 
              SET categoryname = $1 
              WHERE categoryid = $2`,
-            [categoryName, propertyResult.rows[0].categoryid]
-        );
+      [categoryName, propertyResult.rows[0].categoryid]
+    );
 
-      await client.query(
-        `INSERT INTO audit_trail (
+    await client.query(
+      `INSERT INTO audit_trail (
             entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [propertyid, timestamp, "Properties", "PUT", "Update Property Info", creatorid, creatorUsername]
-      );
+      [propertyid, timestamp, "Properties", "PUT", "Update Property Info", creatorid, creatorUsername]
+    );
 
-      res.status(200).json({ message: 'Property updated successfully' });
-    } catch (err) {
-        console.error('Error updating property:', err);
-        res.status(500).json({ error: 'Internal Server Error', details: err.message });
-    } finally {
-        if (client) {
-            client.release(); 
-        }
+    res.status(200).json({ message: 'Property updated successfully' });
+  } catch (err) {
+    console.error('Error updating property:', err);
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
+  } finally {
+    if (client) {
+      client.release();
     }
+  }
 });
 
 // Update Property Status API
@@ -1446,31 +1445,31 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
   const { propertyStatus } = req.body;
   const { creatorid, creatorUsername } = req.query;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
   if (!propertyStatus) {
     return res.status(400).json({ message: "Property status is required" });
   }
 
   let client;
-  
+
   try {
     client = await pool.connect();
-    
+
     const result = await client.query(
       'UPDATE properties SET propertystatus = $1 WHERE propertyid = $2 RETURNING *',
-      [propertyStatus, propertyid] 
+      [propertyStatus, propertyid]
     );
 
     if (result.rowCount === 0) {
       return res.status(404).json({ message: "Property not found" });
     }
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-       [propertyid, timestamp, "Properties", "PATCH", "Update Property Status", creatorid, creatorUsername]
+      [propertyid, timestamp, "Properties", "PATCH", "Update Property Status", creatorid, creatorUsername]
     );
 
     res.status(200).json({ message: "Property status updated successfully", property: result.rows[0] });
@@ -1479,76 +1478,76 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   } finally {
     if (client) {
-      client.release(); 
+      client.release();
     }
   }
 });
 
 // Remove Properties Listing
 app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
-    const { propertyid } = req.params;
-    const { creatorid, creatorUsername } = req.query;
-    const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
-    let client;
-  
-    try {
-      client = await pool.connect();
-  
-      // Check if the property exists
-      const propertyCheck = await client.query(
-        'SELECT propertyid FROM properties WHERE propertyid = $1',
-        [propertyid]
-      );
-  
-      if (propertyCheck.rowCount === 0) {
-        return res.status(404).json({ message: 'Property not found', success: false });
-      }
-  
-      // Delete the property from the database
-      await client.query(
-        'DELETE FROM properties WHERE propertyid = $1',
-        [propertyid]
-      );
+  const { propertyid } = req.params;
+  const { creatorid, creatorUsername } = req.query;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  let client;
 
-      await client.query (
-        `INSERT INTO audit_trail (
+  try {
+    client = await pool.connect();
+
+    // Check if the property exists
+    const propertyCheck = await client.query(
+      'SELECT propertyid FROM properties WHERE propertyid = $1',
+      [propertyid]
+    );
+
+    if (propertyCheck.rowCount === 0) {
+      return res.status(404).json({ message: 'Property not found', success: false });
+    }
+
+    // Delete the property from the database
+    await client.query(
+      'DELETE FROM properties WHERE propertyid = $1',
+      [propertyid]
+    );
+
+    await client.query(
+      `INSERT INTO audit_trail (
             entityid, timestamp, entitytype, actiontype, action, userid, username
          ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-         [propertyid, timestamp, "Properties", "DELETE", "Delete Property", creatorid, creatorUsername]
-      );
-  
-      res.status(200).json({ message: 'Property deleted successfully', success: true });
-    } catch (err) {
-      console.error('Error deleting property:', err);
-      res.status(500).json({ message: 'Internal Server Error'});
-    } finally {
-      if (client) {
-        client.release();
-      }
+      [propertyid, timestamp, "Properties", "DELETE", "Delete Property", creatorid, creatorUsername]
+    );
+
+    res.status(200).json({ message: 'Property deleted successfully', success: true });
+  } catch (err) {
+    console.error('Error deleting property:', err);
+    res.status(500).json({ message: 'Internal Server Error' });
+  } finally {
+    if (client) {
+      client.release();
     }
+  }
 });
 
 // Check user status by userID
-app.get('/checkStatus', async(req, res) => {
+app.get('/checkStatus', async (req, res) => {
   const { userid } = req.query;
   let client;
 
   try {
     client = await pool.connect();
-    
+
     const query = {
       text: 'SELECT userid, username, ustatus, uemail, ufirstname, ulastname FROM "users" WHERE "userid" = $1',
       values: [userid]
     };
-    
+
     const result = await client.query(query);
-    
+
     if (result.rows.length > 0) {
       const user = result.rows[0];
-      
-      res.status(200).json({ 
+
+      res.status(200).json({
         ustatus: user.ustatus,
-        userInfo: user  
+        userInfo: user
       });
     } else {
       console.log('User not found for ID:', userid);
@@ -1566,34 +1565,34 @@ app.get('/checkStatus', async(req, res) => {
 
 // Send contact us email
 app.post("/contact_us", async (req, res) => {
-    const { name, email, message } = req.body;
-    let client;
-  
-    try {
-      client = await pool.connect(); 
-  
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
-    
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: process.env.EMAIL_USER,
-        subject: `Message from ${name}`,
-        html: `
+  const { name, email, message } = req.body;
+  let client;
+
+  try {
+    client = await pool.connect();
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER,
+      subject: `Message from ${name}`,
+      html: `
         <h1>New Message from ${name}</h1>
         <p><strong>Message:</strong></p>
         <p>${message}</p>
         <p><strong>Email:</strong> ${email}</p>`,
-        replyTo: email, 
-      };
-  
-      await transporter.sendMail(mailOptions);
-      res.status(200).json({ message: "Email sent successfully" });
+      replyTo: email,
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ message: "Email sent successfully" });
   } catch (error) {
     console.error("Error sending email:", error);
     res.status(500).json({ message: "Failed to send email", error: error.message });
@@ -1608,12 +1607,12 @@ app.post("/contact_us", async (req, res) => {
 app.post('/requestBooking/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
   const { creatorid, creatorUsername } = req.query;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000); 
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   try {
     client = await pool.connect();
-    
+
     const result = await client.query(
       `SELECT 
         rc.rclastname, 
@@ -1637,16 +1636,16 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
       return res.status(404).json({ message: 'Reservation or user not found for this property' });
     }
 
-    const { 
-      rclastname: customerLastName, 
-      rctitle: customerTitle, 
-      checkindatetime: reservationcheckindatetime, 
-      checkoutdatetime: reservationcheckoutdatetime, 
-      request: reservationRequest = '-', 
-      totalprice: reservationtotalprice, 
-      propertyaddress: reservationProperty, 
+    const {
+      rclastname: customerLastName,
+      rctitle: customerTitle,
+      checkindatetime: reservationcheckindatetime,
+      checkoutdatetime: reservationcheckoutdatetime,
+      request: reservationRequest = '-',
+      totalprice: reservationtotalprice,
+      propertyaddress: reservationProperty,
       nearbylocation: reservationAddress,
-      uemail: userEmail 
+      uemail: userEmail
     } = result.rows[0];
 
     const transporter = nodemailer.createTransport({
@@ -1689,13 +1688,13 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
       ]
     );
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [reservationid, timestamp, "Reservation", "POST", "Request Booking", creatorid, creatorUsername]
+      [reservationid, timestamp, "Reservation", "POST", "Request Booking", creatorid, creatorUsername]
     );
-    
+
     res.status(200).json({ message: 'Email Sent Successfully' })
   } catch (err) {
     console.error('Error sending email: ', err);
@@ -1785,13 +1784,13 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
       ]
     );
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [reservationid, timestamp, "Reservation", "POST", "Accept Booking", creatorid, creatorUsername]
+      [reservationid, timestamp, "Reservation", "POST", "Accept Booking", creatorid, creatorUsername]
     );
-    
+
     res.status(200).json({ message: 'Email sent successfully' });
   } catch (err) {
     console.error('Error sending email:', err);
@@ -1806,14 +1805,14 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
 // Send New Room Suggestion To Customer
 app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
   const { propertyid, reservationid } = req.params;
-  const { creatorid, creatorUsername } = req.query; 
+  const { creatorid, creatorUsername } = req.query;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let client;
 
   try {
     // Fetch property details for suggestion
     client = await pool.connect();
-    
+
     const propertyResult = await client.query(
       `SELECT p.propertyaddress AS "suggestPropertyAddress",
               r.normalrate AS "suggestPropertyPrice",
@@ -1924,13 +1923,13 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
 
     await client.query('COMMIT');
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [reservationid, timestamp, "Reservation", "POST", "Suggest Alternative Room", creatorid, creatorUsername]
+      [reservationid, timestamp, "Reservation", "POST", "Suggest Alternative Room", creatorid, creatorUsername]
     );
-    
+
     res.status(200).json({ message: 'Email Sent Successfully' });
   } catch (err) {
     console.error('Error sending email:', err);
@@ -1947,7 +1946,7 @@ app.post('/propertyListingRequest/:propertyid', async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+
     const moderatorResult = await client.query(
       `SELECT p.propertyaddress, u.ulastname, u.utitle, u.usergroup 
        FROM properties p 
@@ -1998,13 +1997,13 @@ app.post('/propertyListingRequest/:propertyid', async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [propertyid, timestamp, "Properties", "POST", "Request Property Listing", creatorid, creatorUsername]
+      [propertyid, timestamp, "Properties", "POST", "Request Property Listing", creatorid, creatorUsername]
     );
-    
+
     res.status(200).json({ message: 'Email Sent Successfully' })
   } catch (err) {
     console.error('Error sending email: ', err);
@@ -2025,7 +2024,7 @@ app.post("/propertyListingAccept/:propertyid", async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+
     const result = await client.query(
       `SELECT p.propertyaddress, u.ulastname, u.uemail, u.utitle 
        FROM properties p  
@@ -2064,13 +2063,13 @@ app.post("/propertyListingAccept/:propertyid", async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [propertyid, timestamp, "Properties", "POST", "Accept Property Listing", creatorid, creatorUsername]
+      [propertyid, timestamp, "Properties", "POST", "Accept Property Listing", creatorid, creatorUsername]
     );
-    
+
     res.status(200).json({ message: "Email Sent Successfully" });
   } catch (err) {
     console.error("Error sending email:", err);
@@ -2091,7 +2090,7 @@ app.post("/propertyListingReject/:propertyid", async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+
     const result = await client.query(
       `SELECT p.propertyaddress, u.ulastname, u.uemail, u.utitle 
        FROM properties p  
@@ -2131,13 +2130,13 @@ app.post("/propertyListingReject/:propertyid", async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [propertyid, timestamp, "Properties", "POST", "Reject Property Listing", creatorid, creatorUsername]
+      [propertyid, timestamp, "Properties", "POST", "Reject Property Listing", creatorid, creatorUsername]
     );
-    
+
     res.status(200).json({ message: "Email Sent Successfully" });
   } catch (err) {
     console.error("Error sending email:", err);
@@ -2163,7 +2162,7 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+
     // Fetch user emails
     const userResult = await client.query(
       `SELECT uemail FROM users WHERE userid = ANY($1::int[])`,
@@ -2182,7 +2181,7 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
        SET suggestedemail = $1
        WHERE reservationid = $2
        `,
-       [emailString, reservationid]
+      [emailString, reservationid]
     );
 
     // Fetch reservation and customer details
@@ -2204,12 +2203,12 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
       return res.status(404).json({ message: 'No reservation or customer found' });
     }
 
-    const { 
-      reservationProperty, 
-      reservationCheckInDate, 
-      reservationCheckOutDate, 
-      customerLastName, 
-      customerTitle 
+    const {
+      reservationProperty,
+      reservationCheckInDate,
+      reservationCheckOutDate,
+      customerLastName,
+      customerTitle
     } = reservationResult.rows[0];
 
     // Email configuration
@@ -2253,13 +2252,13 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
       ]
     );
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [reservationid, timestamp, "Reservation", "POST", "Send Suggest Notification", creatorid, creatorUsername]
+      [reservationid, timestamp, "Reservation", "POST", "Send Suggest Notification", creatorid, creatorUsername]
     );
-    
+
     res.status(200).json({ message: 'Email Sent Successfully' });
 
   } catch (err) {
@@ -2281,7 +2280,7 @@ app.post('/sendPickedUpNotification/:reservationid', async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+
     // Fetch user emails
     const reservationOwnerResult = await client.query(
       `SELECT u.username, u.uemail, utitle 
@@ -2318,12 +2317,12 @@ app.post('/sendPickedUpNotification/:reservationid', async (req, res) => {
       return res.status(404).json({ message: 'No reservation or customer found' });
     }
 
-    const { 
-      reservationProperty, 
-      reservationCheckInDate, 
-      reservationCheckOutDate, 
-      customerLastName, 
-      customerTitle 
+    const {
+      reservationProperty,
+      reservationCheckInDate,
+      reservationCheckOutDate,
+      customerLastName,
+      customerTitle
     } = reservationResult.rows[0];
 
     // Email configuration
@@ -2361,13 +2360,13 @@ app.post('/sendPickedUpNotification/:reservationid', async (req, res) => {
       ]
     );
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [reservationid, timestamp, "Reservation", "POST", "Reservation Picked Up", creatorid, creatorUsername]
+      [reservationid, timestamp, "Reservation", "POST", "Reservation Picked Up", creatorid, creatorUsername]
     );
-    
+
     res.status(200).json({ message: 'Email Sent Successfully' });
 
   } catch (err) {
@@ -2386,7 +2385,7 @@ app.post('/reject_suggested_room/:propertyid/', async (req, res) => {
   try {
     // Fetch property details for suggestion
     client = await pool.connect();
-    
+
     const propertyResult = await client.query(
       `SELECT p.propertyaddress AS "suggestPropertyAddress",
               r.normalrate AS "suggestPropertyPrice",
@@ -2444,13 +2443,13 @@ app.post('/reject_suggested_room/:propertyid/', async (req, res) => {
 
     await client.query('COMMIT');
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [propertyid, timestamp, "Properties", "POST", "Rejected Suggested Room", creatorid, creatorUsername]
+      [propertyid, timestamp, "Properties", "POST", "Rejected Suggested Room", creatorid, creatorUsername]
     );
-    
+
     res.status(200).json({ message: 'Email Sent Successfully' });
   } catch (err) {
     console.error('Error sending email:', err);
@@ -2472,7 +2471,7 @@ app.post('/reservation/:userid', async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+
     const customerResult = await client.query(
       `INSERT INTO reservation_customer_details 
        (rcfirstname, rclastname, rcemail, rcphoneno, rctitle)
@@ -2526,28 +2525,28 @@ app.post('/reservation/:userid', async (req, res) => {
       ]
     );
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [reservationid, timestamp, "Reservation", "POST", "Create Reservation", creatorid, creatorUsername]
+      [reservationid, timestamp, "Reservation", "POST", "Create Reservation", creatorid, creatorUsername]
     );
 
     await client.query('COMMIT');
 
-    res.status(201).json({ 
-       message: 'Reservation created successfully', 
-      reservationid 
+    res.status(201).json({
+      message: 'Reservation created successfully',
+      reservationid
     });
   } catch (err) {
     if (client) {
       await client.query('ROLLBACK');
     }
     console.error('Error inserting reservation data:', err);
-    res.status(500).json({ 
-      message: 'Internal Server Error', 
-      details: err.message 
-    }); 
+    res.status(500).json({
+      message: 'Internal Server Error',
+      details: err.message
+    });
   } finally {
     if (client) {
       client.release();
@@ -2684,20 +2683,20 @@ app.get("/users/finance", async (req, res) => {
         ORDER BY month;
         `,
       );
-    } else if (usergroup === 'Moderator') { 
-        const clusterResult = await pool.query(
-          `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
-          [userid]
-        );
-    
-        if (clusterResult.rows.length === 0) {
-          return res.status(404).json({ message: "No cluster found for this user" });
-        }
-    
-        const clusterids = clusterResult.rows.map(row => row.clusterid);
-    
-        result = await pool.query(
-          `
+    } else if (usergroup === 'Moderator') {
+      const clusterResult = await pool.query(
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
+        [userid]
+      );
+
+      if (clusterResult.rows.length === 0) {
+        return res.status(404).json({ message: "No cluster found for this user" });
+      }
+
+      const clusterids = clusterResult.rows.map(row => row.clusterid);
+
+      result = await pool.query(
+        `
           SELECT 
             TO_CHAR(checkindatetime, 'YYYY-MM') AS month,
             SUM(totalprice) AS monthlyrevenue,
@@ -2712,22 +2711,22 @@ app.get("/users/finance", async (req, res) => {
           GROUP BY TO_CHAR(checkindatetime, 'YYYY-MM')
           ORDER BY month;
           `,
-          [clusterids, userid]
-        ); 
+        [clusterids, userid]
+      );
     } else {
-       const clusterResult = await pool.query(
-          `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
-          [userid]
-        );
-    
-        if (clusterResult.rows.length === 0) {
-          return res.status(404).json({ message: "No cluster found for this user" });
-        }
-    
-        const clusterids = clusterResult.rows.map(row => row.clusterid);
-    
-        result = await pool.query(
-          `
+      const clusterResult = await pool.query(
+        `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
+        [userid]
+      );
+
+      if (clusterResult.rows.length === 0) {
+        return res.status(404).json({ message: "No cluster found for this user" });
+      }
+
+      const clusterids = clusterResult.rows.map(row => row.clusterid);
+
+      result = await pool.query(
+        `
           SELECT 
             TO_CHAR(checkindatetime, 'YYYY-MM') AS month,
             SUM(totalprice) AS monthlyrevenue,
@@ -2740,8 +2739,8 @@ app.get("/users/finance", async (req, res) => {
           GROUP BY TO_CHAR(checkindatetime, 'YYYY-MM')
           ORDER BY month;
           `,
-          [clusterids]
-        ); 
+        [clusterids]
+      );
     }
 
     if (result.rows && result.rows.length > 0) {
@@ -2823,13 +2822,13 @@ app.get("/users/occupancy_rate", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster found for user" });
       }
-  
+
       const clusterids = clusterResult.rows.map(row => row.clusterid);
-  
+
       result = await pool.query(`
         WITH monthly_data AS (
             SELECT 
@@ -2877,13 +2876,13 @@ app.get("/users/occupancy_rate", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster found for user" });
       }
-  
+
       const clusterids = clusterResult.rows.map(row => row.clusterid);
-  
+
       result = await pool.query(`
         WITH monthly_data AS (
             SELECT 
@@ -2925,7 +2924,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
         ORDER BY md.month;
       `, [clusterids]);
     }
-    
+
     if (result.rows.length > 0) {
       console.log("Monthly data with occupancy rate:", result.rows);
       res.json({ monthlyData: result.rows });
@@ -2971,7 +2970,7 @@ app.get("/users/RevPAR", async (req, res) => {
       if (availableProperties === 0) {
         return res.status(404).json({ message: "No available properties found" });
       }
-  
+
       revparResult = await pool.query(
         `
         SELECT 
@@ -2996,13 +2995,13 @@ app.get("/users/RevPAR", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster found for this user" });
       }
-  
+
       const clusterids = clusterResult.rows.map(row => row.clusterid);
-  
+
       propertyCountResult = await pool.query(
         `SELECT COUNT(*) AS available_properties 
          FROM properties 
@@ -3011,13 +3010,13 @@ app.get("/users/RevPAR", async (req, res) => {
            AND userid = $2;`,
         [clusterids, userid]
       );
-  
+
       const availableProperties = parseInt(propertyCountResult.rows[0].available_properties);
-  
+
       if (availableProperties === 0) {
         return res.status(404).json({ message: "No available properties found" });
       }
-  
+
       revparResult = await pool.query(
         `
         SELECT 
@@ -3043,13 +3042,13 @@ app.get("/users/RevPAR", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster found for this user" });
       }
-  
+
       const clusterids = clusterResult.rows.map(row => row.clusterid);
-  
+
       propertyCountResult = await pool.query(
         `SELECT COUNT(*) AS available_properties 
          FROM properties 
@@ -3057,13 +3056,13 @@ app.get("/users/RevPAR", async (req, res) => {
            AND clusterid = ANY($1);`,
         [clusterids]
       );
-  
+
       const availableProperties = parseInt(propertyCountResult.rows[0].available_properties);
-  
+
       if (availableProperties === 0) {
         return res.status(404).json({ message: "No available properties found" });
       }
-  
+
       revparResult = await pool.query(
         `
         SELECT 
@@ -3085,7 +3084,7 @@ app.get("/users/RevPAR", async (req, res) => {
         [clusterids, availableProperties]
       );
     }
-    
+
     if (revparResult.rows.length > 0) {
       res.json({
         monthlyData: revparResult.rows,
@@ -3140,13 +3139,13 @@ app.get("/users/cancellation_rate", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster found for this user" });
       }
-  
+
       const clusterids = clusterResult.rows.map(row => row.clusterid);
-  
+
       cancellationRateResult = await pool.query(
         `
         SELECT 
@@ -3172,13 +3171,13 @@ app.get("/users/cancellation_rate", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster found for this user" });
       }
-  
+
       const clusterids = clusterResult.rows.map(row => row.clusterid);
-  
+
       cancellationRateResult = await pool.query(
         `
         SELECT 
@@ -3258,13 +3257,13 @@ app.get("/users/customer_retention_rate", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster found for this user" });
       }
-  
+
       const clusterids = clusterResult.rows.map(row => row.clusterid);
-  
+
       result = await pool.query(
         `
         WITH monthly_users AS (
@@ -3293,13 +3292,13 @@ app.get("/users/customer_retention_rate", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster found for this user" });
       }
-  
+
       const clusterids = clusterResult.rows.map(row => row.clusterid);
-  
+
       result = await pool.query(
         `
         WITH monthly_users AS (
@@ -3323,7 +3322,7 @@ app.get("/users/customer_retention_rate", async (req, res) => {
         [clusterids]
       );
     }
-    
+
     if (result.rows.length > 0) {
       console.log("Customer Retention Rate result:", result.rows);
       res.json({
@@ -3376,13 +3375,13 @@ app.get("/users/guest_satisfaction_score", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster found for this user" });
       }
-  
+
       const clusterids = clusterResult.rows.map(row => row.clusterid);
-  
+
       result = await pool.query(
         `
         SELECT 
@@ -3403,13 +3402,13 @@ app.get("/users/guest_satisfaction_score", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster found for this user" });
       }
-  
+
       const clusterids = clusterResult.rows.map(row => row.clusterid);
-  
+
       result = await pool.query(
         `
         SELECT 
@@ -3476,13 +3475,13 @@ app.get("/users/alos", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster found for this user" });
       }
-  
+
       const clusterids = clusterResult.rows.map((row) => row.clusterid);
-  
+
       result = await pool.query(
         `
         SELECT 
@@ -3502,13 +3501,13 @@ app.get("/users/alos", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster found for this user" });
       }
-  
+
       const clusterids = clusterResult.rows.map((row) => row.clusterid);
-  
+
       result = await pool.query(
         `
         SELECT 
@@ -3523,7 +3522,7 @@ app.get("/users/alos", async (req, res) => {
         [clusterids]
       );
     }
-    
+
     if (result.rows.length > 0) {
       console.log("Average Length of Stay result:", result.rows);
       res.json({
@@ -3549,7 +3548,7 @@ app.get('/cart', async (req, res) => {
   let client;
   try {
     client = await pool.connect();
-    
+
     const result = await client.query(
       `SELECT 
         r.reservationid,
@@ -3591,56 +3590,56 @@ app.get('/cart', async (req, res) => {
 // Get property owner's PayPal ID
 app.get('/property/owner-paypal/:propertyId', async (req, res) => {
   const propertyId = req.params.propertyId;
-  
+
   if (!propertyId || isNaN(propertyId)) {
     return res.status(400).json({ error: 'Invalid property ID' });
   }
-  
+
   let client;
   try {
     client = await pool.connect();
-    
+
     // FIXED: Use correct column name 'userid' instead of 'owner_id'
     const ownerResult = await client.query(
       `SELECT userid FROM properties WHERE propertyid = $1`,
       [propertyId]
     );
-    
+
     if (ownerResult.rows.length === 0) {
       return res.status(404).json({ error: 'Property not found' });
     }
-    
+
     const ownerId = ownerResult.rows[0].userid;
-    
+
     // Get PayPal ID and user details
     const paypalResult = await client.query(
       `SELECT paypalid, ufirstname, ulastname, usergroup FROM users WHERE userid = $1`,
       [ownerId]
     );
-    
+
     if (paypalResult.rows.length === 0) {
       return res.status(404).json({ error: 'Property owner not found' });
     }
-    
+
     const ownerData = paypalResult.rows[0];
-    
+
     // Check if owner has valid user group (case-insensitive)
     const userGroupLower = ownerData.usergroup.toLowerCase();
-    
+
     if (!['administrator', 'moderator'].includes(userGroupLower)) {
       return res.status(403).json({ error: 'Property not owned by a valid payment recipient' });
     }
-    
+
     if (!ownerData.paypalid) {
       return res.status(400).json({ error: 'Property owner has no PayPal ID configured' });
     }
-    
+
     res.status(200).json({
       payPalId: ownerData.paypalid,
       ownerName: `${ownerData.ufirstname} ${ownerData.ulastname}`,
       ownerGroup: ownerData.usergroup
     });
-    
+
   } catch (err) {
     console.error('Error fetching property owner PayPal ID:', err);
     res.status(500).json({ error: 'Internal Server Error', details: err.message });
@@ -3653,30 +3652,30 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
 
 // Fetch all reservations (Dashboard)
 app.get('/reservationTable', async (req, res) => {
-    const username = req.query.username;
+  const username = req.query.username;
 
-    if (!username) {
-        return res.status(400).json({ error: 'Username is required' });
+  if (!username) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
+  let client;
+
+  try {
+    client = await pool.connect();
+
+    const userResult = await client.query(
+      'SELECT userid, usergroup FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    let client;
-  
-    try {
-        client = await pool.connect();
+    const userid = userResult.rows[0].userid;
+    const usergroup = userResult.rows[0].usergroup;
 
-        const userResult = await client.query(
-            'SELECT userid, usergroup FROM users WHERE username = $1',
-            [username]
-        );
-
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        const userid = userResult.rows[0].userid;
-        const usergroup = userResult.rows[0].usergroup;
-
-        let query = `
+    let query = `
             SELECT 
                 r.reservationid,
                 r.propertyid,
@@ -3702,28 +3701,28 @@ app.get('/reservationTable', async (req, res) => {
             JOIN reservation_customer_details rc ON r.rcid = rc.rcid
         `;
 
-        // Add filtering for Moderators
-        if (usergroup === 'Moderator') {
-            query += ' AND p.userid = $1';
-        }
-
-        const params = usergroup === 'Moderator' ? [userid] : [];
-        const result = await client.query(query, params);
-
-        const reservations = result.rows.map(reservation => ({
-            ...reservation,
-            propertyimage: reservation.propertyimage ? reservation.propertyimage.split(',') : []
-        }));
-
-        res.status(200).json({ reservations });
-    } catch (err) {
-        console.error('Error fetching reservation data for reservation table:', err);
-        res.status(500).json({ message: 'Internal Server Error', details: err.message });
-    } finally {
-        if (client) {
-            client.release();
-        }
+    // Add filtering for Moderators
+    if (usergroup === 'Moderator') {
+      query += ' AND p.userid = $1';
     }
+
+    const params = usergroup === 'Moderator' ? [userid] : [];
+    const result = await client.query(query, params);
+
+    const reservations = result.rows.map(reservation => ({
+      ...reservation,
+      propertyimage: reservation.propertyimage ? reservation.propertyimage.split(',') : []
+    }));
+
+    res.status(200).json({ reservations });
+  } catch (err) {
+    console.error('Error fetching reservation data for reservation table:', err);
+    res.status(500).json({ message: 'Internal Server Error', details: err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
 });
 
 // Update reservation status
@@ -3735,7 +3734,7 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+
     const result = await client.query(
       'UPDATE reservation SET reservationstatus = $1 WHERE reservationid = $2 RETURNING *',
       [reservationStatus, reservationid]
@@ -3781,10 +3780,10 @@ app.delete('/removeReservation/:reservationid', async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+
     // Delete reservation from the Reservation table
     const result = await client.query(
-      `DELETE FROM reservation WHERE reservationid = $1`, 
+      `DELETE FROM reservation WHERE reservationid = $1`,
       [reservationid]
     );
 
@@ -3805,11 +3804,11 @@ app.delete('/removeReservation/:reservationid', async (req, res) => {
       ]
     );
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [reservationid, timestamp, "Reservation", "DELETE", "Remove Reservation", creatorid, creatorUsername]
+      [reservationid, timestamp, "Reservation", "DELETE", "Remove Reservation", creatorid, creatorUsername]
     );
 
     res.status(200).json({ message: 'Reservation removed successfully' });
@@ -3840,7 +3839,7 @@ app.get('/operatorProperties/:userid/:reservationid', async (req, res) => {
     );
 
     const reservationstartdate = reservationResults.rows[0].checkindatetime;
-    
+
     const result = await client.query(
       `SELECT p.*, r.normalrate, r.weekendrate, r.specialeventrate, r.earlybirddiscountrate, r.lastminutediscountrate
        FROM properties p
@@ -3887,7 +3886,7 @@ app.get('/getUserInfo/:userid', async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+
     const result = await client.query(
       `SELECT 
         "utitle",
@@ -3897,7 +3896,7 @@ app.get('/getUserInfo/:userid', async (req, res) => {
         "uphoneno"
       FROM "users"
       WHERE "userid" = $1`,
-      [userid] 
+      [userid]
     );
 
     if (result.rows.length === 0) {
@@ -3921,7 +3920,7 @@ app.get('/users/getDecryptedPassword/:userid', async (req, res) => {
     console.log("userid:", userid);
     const result = await client.query(
       `SELECT password FROM users WHERE userid = $1`,
-      [userid] 
+      [userid]
     );
 
     if (result.rows.length === 0) {
@@ -3960,7 +3959,7 @@ app.post('/forgot-password', async (req, res) => {
 
     // Check if the email exists in the database
     const userResult = await client.query(
-      'SELECT userid, username FROM users WHERE uemail = $1', 
+      'SELECT userid, username FROM users WHERE uemail = $1',
       [email]
     );
 
@@ -4011,7 +4010,7 @@ app.post('/forgot-password', async (req, res) => {
     res.status(500).json({ message: 'Server error', details: err.message });
   } finally {
     if (client) {
-      client.release(); 
+      client.release();
     }
   }
 });
@@ -4027,12 +4026,12 @@ app.get('/users/:userid', async (req, res) => {
   let client;
   try {
     client = await pool.connect();
-    
+
     const query = {
       text: "SELECT * FROM users WHERE userid = $1",
       values: [userid]
     };
-    
+
     const result = await client.query(query);
 
     if (result.rows.length === 0) {
@@ -4085,11 +4084,11 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found or no changes made.', success: false });
     }
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [userid, timestamp, "Users", "PUT", "Update Profile", creatorid, creatorUsername]
+      [userid, timestamp, "Users", "PUT", "Update Profile", creatorid, creatorUsername]
     );
     res.status(200).json({ message: 'Profile updated successfully.', success: true });
   } catch (err) {
@@ -4114,7 +4113,7 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
   }
 
   if (!uimage) {
-      return res.status(400).json({ message: 'No image data provided.' });
+    return res.status(400).json({ message: 'No image data provided.' });
   }
 
   let client;
@@ -4137,17 +4136,17 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
       return res.status(500).json({ message: 'Failed to update user avatar' });
     }
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [userid, timestamp, "Users", "POST", "Upload Avatar", creatorid, creatorUsername]
+      [userid, timestamp, "Users", "POST", "Upload Avatar", creatorid, creatorUsername]
     );
 
     return res.status(200).json({
       success: true,
       message: 'Avatar uploaded successfully',
-      data: result.rows[0], 
+      data: result.rows[0],
     });
   } catch (err) {
     console.error('Error uploading avatar:', err.message);
@@ -4160,127 +4159,127 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
 });
 
 app.post('/reviews', async (req, res) => {
-    const { userid, propertyid, review, rating } = req.body; 
-    const { creatorUsername } = req.query;
-    const reviewdate = new Date(); 
+  const { userid, propertyid, review, rating } = req.body;
+  const { creatorUsername } = req.query;
+  const reviewdate = new Date();
 
-    if (!userid || !propertyid || !review || !rating) {
-        return res.status(400).json({ message: 'Missing required fields: userid, propertyid, review, or rating' });
+  if (!userid || !propertyid || !review || !rating) {
+    return res.status(400).json({ message: 'Missing required fields: userid, propertyid, review, or rating' });
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+
+    // First check if the user is a Customer
+    const userCheckQuery = {
+      text: 'SELECT usergroup FROM users WHERE userid = $1',
+      values: [userid]
+    };
+
+    const userResult = await client.query(userCheckQuery);
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Please login first' });
     }
 
-    let client;
-    try {
-        client = await pool.connect();
-        
-        // First check if the user is a Customer
-        const userCheckQuery = {
-            text: 'SELECT usergroup FROM users WHERE userid = $1',
-            values: [userid]
-        };
-        
-        const userResult = await client.query(userCheckQuery);
-        
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({ message: 'Please login first' });
-        }
-        
-        if (userResult.rows[0].usergroup !== 'Customer') {
-            return res.status(403).json({ message: 'Please login first' });
-        }
+    if (userResult.rows[0].usergroup !== 'Customer') {
+      return res.status(403).json({ message: 'Please login first' });
+    }
 
-        // Check if user has already submitted a review for this property
-        const existingReviewQuery = {
-            text: 'SELECT reviewid FROM reviews WHERE userid = $1 AND propertyid = $2',
-            values: [userid, propertyid]
-        };
-        
-        const existingReviewResult = await client.query(existingReviewQuery);
-        
-        if (existingReviewResult.rows.length > 0) {
-            return res.status(409).json({ message: 'You have already submitted a review for this property' });
-        }
+    // Check if user has already submitted a review for this property
+    const existingReviewQuery = {
+      text: 'SELECT reviewid FROM reviews WHERE userid = $1 AND propertyid = $2',
+      values: [userid, propertyid]
+    };
 
-        // Begin transaction
-        await client.query('BEGIN');
+    const existingReviewResult = await client.query(existingReviewQuery);
 
-        // Insert the review
-        const insertReviewQuery = {
-            text: `INSERT INTO reviews (userid, propertyid, review, reviewdate) 
+    if (existingReviewResult.rows.length > 0) {
+      return res.status(409).json({ message: 'You have already submitted a review for this property' });
+    }
+
+    // Begin transaction
+    await client.query('BEGIN');
+
+    // Insert the review
+    const insertReviewQuery = {
+      text: `INSERT INTO reviews (userid, propertyid, review, reviewdate) 
                    VALUES ($1, $2, $3, $4) RETURNING reviewid;`,
-            values: [userid, propertyid, review, reviewdate]
-        };
-        
-        const reviewResult = await client.query(insertReviewQuery);
-        
-        // Update the property rating
-        const propertyQuery = {
-            text: 'SELECT rating, ratingno FROM properties WHERE propertyid = $1',
-            values: [propertyid]
-        };
-        
-        const propertyResult = await client.query(propertyQuery);
-        
-        if (propertyResult.rows.length === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ message: 'Property not found' });
-        }
-        
-        const currentProperty = propertyResult.rows[0];
-        let newRatingNo = currentProperty.ratingno ? currentProperty.ratingno + 1 : 1;
-        let currentTotalRating = currentProperty.rating ? currentProperty.rating * currentProperty.ratingno : 0;
-        let newTotalRating = currentTotalRating + parseFloat(rating);
-        let newAverageRating = newTotalRating / newRatingNo;
-        
-        // Update the property with the new rating
-        const updatePropertyQuery = {
-            text: 'UPDATE properties SET rating = $1, ratingno = $2 WHERE propertyid = $3',
-            values: [newAverageRating, newRatingNo, propertyid]
-        };
-        
-        await client.query(updatePropertyQuery);
-        
-        // Commit transaction
-        await client.query('COMMIT');
+      values: [userid, propertyid, review, reviewdate]
+    };
 
-        await client.query (
-          `INSERT INTO audit_trail (
+    const reviewResult = await client.query(insertReviewQuery);
+
+    // Update the property rating
+    const propertyQuery = {
+      text: 'SELECT rating, ratingno FROM properties WHERE propertyid = $1',
+      values: [propertyid]
+    };
+
+    const propertyResult = await client.query(propertyQuery);
+
+    if (propertyResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Property not found' });
+    }
+
+    const currentProperty = propertyResult.rows[0];
+    let newRatingNo = currentProperty.ratingno ? currentProperty.ratingno + 1 : 1;
+    let currentTotalRating = currentProperty.rating ? currentProperty.rating * currentProperty.ratingno : 0;
+    let newTotalRating = currentTotalRating + parseFloat(rating);
+    let newAverageRating = newTotalRating / newRatingNo;
+
+    // Update the property with the new rating
+    const updatePropertyQuery = {
+      text: 'UPDATE properties SET rating = $1, ratingno = $2 WHERE propertyid = $3',
+      values: [newAverageRating, newRatingNo, propertyid]
+    };
+
+    await client.query(updatePropertyQuery);
+
+    // Commit transaction
+    await client.query('COMMIT');
+
+    await client.query(
+      `INSERT INTO audit_trail (
               entityid, timestamp, entitytype, actiontype, action, userid, username
             ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [propertyid, reviewdate, "Properties", "POST", "Review Property", userid, creatorUsername]
-        );
-        
-        res.status(201).json({ 
-            message: 'Review added successfully', 
-            reviewid: reviewResult.rows[0].reviewid,
-            newRating: newAverageRating
-        });
-    } catch (error) {
-        if (client) {
-            await client.query('ROLLBACK');
-        }
-        console.error('Error adding review:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    } finally {
-        if (client) {
-            client.release(); 
-        }
+      [propertyid, reviewdate, "Properties", "POST", "Review Property", userid, creatorUsername]
+    );
+
+    res.status(201).json({
+      message: 'Review added successfully',
+      reviewid: reviewResult.rows[0].reviewid,
+      newRating: newAverageRating
+    });
+  } catch (error) {
+    if (client) {
+      await client.query('ROLLBACK');
     }
+    console.error('Error adding review:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
 });
 
 app.get('/reviews/:propertyid', async (req, res) => {
-    const propertyid = req.params.propertyid;
-    
-    if (!propertyid) {
-        return res.status(400).json({ message: 'Property ID is required' });
-    }
+  const propertyid = req.params.propertyid;
 
-    let client;
-    try {
-        client = await pool.connect();
-        
-        // Get reviews for the property with user information
-        const reviewsQuery = {
-            text: `
+  if (!propertyid) {
+    return res.status(400).json({ message: 'Property ID is required' });
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+
+    // Get reviews for the property with user information
+    const reviewsQuery = {
+      text: `
                 SELECT r.reviewid, r.review, r.reviewdate, 
                        u.userid, u.username, u.uimage as avatar, p.propertyid, p.rating, p.ratingno,
                        EXTRACT(YEAR FROM AGE(CURRENT_DATE, u.timestamp)) as years_on_platform
@@ -4290,86 +4289,86 @@ app.get('/reviews/:propertyid', async (req, res) => {
                 WHERE r.propertyid = $1
                 ORDER BY r.reviewdate DESC
             `,
-            values: [propertyid]
-        };
-        
-        const reviewsResult = await client.query(reviewsQuery);
-        
-        // If no reviews, get property data directly
-        let propertyData;
-        if (reviewsResult.rows.length === 0) {
-            const propertyQuery = {
-                text: 'SELECT propertyid, rating, ratingno FROM properties WHERE propertyid = $1',
-                values: [propertyid]
-            };
-            const propertyResult = await client.query(propertyQuery);
-            
-            if (propertyResult.rows.length === 0) {
-                return res.status(404).json({ message: 'Property not found' });
-            }
-            
-            propertyData = {
-                propertyid: propertyResult.rows[0].propertyid,
-                rating: propertyResult.rows[0].rating || 0,
-                ratingno: propertyResult.rows[0].ratingno || 0
-            };
-        } else {
-            // Extract property data from the first review row
-            propertyData = {
-                propertyid: reviewsResult.rows[0].propertyid,
-                rating: reviewsResult.rows[0].rating || 0,
-                ratingno: reviewsResult.rows[0].ratingno || 0
-            };
-        }
-        
-        // Format reviews for frontend
-        const reviews = reviewsResult.rows.map(row => {
-            const reviewDate = new Date(row.reviewdate);
-            const now = new Date();
-            
-            // Calculate relative time for datePosted
-            let datePosted;
-            const diffTime = Math.abs(now - reviewDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays < 7) {
-                datePosted = `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
-            } else if (diffDays < 30) {
-                const weeks = Math.floor(diffDays / 7);
-                datePosted = `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
-            } else if (diffDays < 365) {
-                const months = Math.floor(diffDays / 30);
-                datePosted = `${months} ${months === 1 ? 'month' : 'months'} ago`;
-            } else {
-                const years = Math.floor(diffDays / 365);
-                datePosted = `${years} ${years === 1 ? 'year' : 'years'} ago`;
-            }
-            
-            return {
-                id: row.reviewid,
-                name: row.username,
-                avatar: row.avatar || null, // Return the avatar as is, frontend will handle formatting
-                yearsOnPlatform: Math.floor(row.years_on_platform) || 0,
-                isNew: row.years_on_platform < 1,
-                datePosted: datePosted,
-                comment: row.review
-            };
-        });
-        
-        // Return consolidated response with reviews and property data
-        res.status(200).json({
-            reviews: reviews,
-            property: propertyData
-        });
-        
-    } catch (error) {
-        console.error('Error fetching reviews:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    } finally {
-        if (client) {
-            client.release();
-        }
+      values: [propertyid]
+    };
+
+    const reviewsResult = await client.query(reviewsQuery);
+
+    // If no reviews, get property data directly
+    let propertyData;
+    if (reviewsResult.rows.length === 0) {
+      const propertyQuery = {
+        text: 'SELECT propertyid, rating, ratingno FROM properties WHERE propertyid = $1',
+        values: [propertyid]
+      };
+      const propertyResult = await client.query(propertyQuery);
+
+      if (propertyResult.rows.length === 0) {
+        return res.status(404).json({ message: 'Property not found' });
+      }
+
+      propertyData = {
+        propertyid: propertyResult.rows[0].propertyid,
+        rating: propertyResult.rows[0].rating || 0,
+        ratingno: propertyResult.rows[0].ratingno || 0
+      };
+    } else {
+      // Extract property data from the first review row
+      propertyData = {
+        propertyid: reviewsResult.rows[0].propertyid,
+        rating: reviewsResult.rows[0].rating || 0,
+        ratingno: reviewsResult.rows[0].ratingno || 0
+      };
     }
+
+    // Format reviews for frontend
+    const reviews = reviewsResult.rows.map(row => {
+      const reviewDate = new Date(row.reviewdate);
+      const now = new Date();
+
+      // Calculate relative time for datePosted
+      let datePosted;
+      const diffTime = Math.abs(now - reviewDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 7) {
+        datePosted = `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+      } else if (diffDays < 30) {
+        const weeks = Math.floor(diffDays / 7);
+        datePosted = `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+      } else if (diffDays < 365) {
+        const months = Math.floor(diffDays / 30);
+        datePosted = `${months} ${months === 1 ? 'month' : 'months'} ago`;
+      } else {
+        const years = Math.floor(diffDays / 365);
+        datePosted = `${years} ${years === 1 ? 'year' : 'years'} ago`;
+      }
+
+      return {
+        id: row.reviewid,
+        name: row.username,
+        avatar: row.avatar || null, // Return the avatar as is, frontend will handle formatting
+        yearsOnPlatform: Math.floor(row.years_on_platform) || 0,
+        isNew: row.years_on_platform < 1,
+        datePosted: datePosted,
+        comment: row.review
+      };
+    });
+
+    // Return consolidated response with reviews and property data
+    res.status(200).json({
+      reviews: reviews,
+      property: propertyData
+    });
+
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
 });
 
 // Assign role to user
@@ -4381,7 +4380,7 @@ app.post('/users/assignRole/:userid/:role', async (req, res) => {
 
   try {
     client = await pool.connect();
-    
+
     const validRoles = ['Customer', 'Moderator', 'Administrator'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({ message: 'Invalid role', success: false });
@@ -4446,13 +4445,13 @@ app.get("/auditTrails", async (req, res) => {
         `SELECT DISTINCT clusterid FROM users WHERE userid = $1`,
         [userid]
       );
-  
+
       if (clusterResult.rows.length === 0) {
         return res.status(404).json({ message: "No cluster or usergroup found for this user" });
       }
-  
+
       const clusterids = clusterResult.rows.map((row) => row.clusterid);
-  
+
       result = await client.query(
         `
         SELECT 
@@ -4470,7 +4469,7 @@ app.get("/auditTrails", async (req, res) => {
     const formattedRows = result.rows.map(row => {
       if (row.timestamp) {
         const date = new Date(row.timestamp);
-        row.timestamp = date.toISOString().replace('T', ' ').split('.')[0]; 
+        row.timestamp = date.toISOString().replace('T', ' ').split('.')[0];
       }
       return row;
     });
@@ -4496,62 +4495,62 @@ app.get("/auditTrails", async (req, res) => {
 // Fetch Suggested Reservation
 app.get('/suggestedReservations/:userid', async (req, res) => {
   const { userid } = req.params;
-  
+
   let client;
-  
+
   try {
-      client = await pool.connect();
-  
-      const userEmail = await pool.query(
-        `
+    client = await pool.connect();
+
+    const userEmail = await pool.query(
+      `
           SELECT 
             uemail
           FROM users
           WHERE userid = $1;
         `,
-        [userid]
-      );
-  
-      const uemail = userEmail.rows[0].uemail;
-  
-      const result = await client.query(
-        `
+      [userid]
+    );
+
+    const uemail = userEmail.rows[0].uemail;
+
+    const result = await client.query(
+      `
           SELECT r.*, p.*
           FROM reservation r
           JOIN properties p ON r.propertyid = p.propertyid
           WHERE $1 = ANY (string_to_array(suggestedemail, ','))
           AND reservationstatus = 'Suggested'
         `,
-        [uemail]
-      );
+      [uemail]
+    );
 
-      // Process the properties to handle images like in /product endpoint
-      const processedReservations = result.rows.map(reservation => {
-        console.log(`Reservation ID ${reservation.reservationid} - Original image data:`, 
-                    reservation.propertyimage ? reservation.propertyimage.substring(0, 50) + '...' : 'No image');
-        
-        const processedReservation = {
-          ...reservation,
-          propertyimage: reservation.propertyimage ? reservation.propertyimage.split(',') : []
-        };
-        
-        console.log(`Reservation ID ${reservation.reservationid} - Processed image array length:`, 
-                    processedReservation.propertyimage.length);
-        
-        return processedReservation;
-      });
-      
-      if (processedReservations.length > 0) {
-        console.log('Sample processed reservation object:');
-        const sampleReservation = {...processedReservations[0]};
-        if (sampleReservation.propertyimage && sampleReservation.propertyimage.length > 0) {
-          sampleReservation.propertyimage = [`${sampleReservation.propertyimage[0].substring(0, 50)}... (truncated)`, 
-                                           `and ${sampleReservation.propertyimage.length - 1} more images`];
-        }
-        console.log(JSON.stringify(sampleReservation, null, 2));
+    // Process the properties to handle images like in /product endpoint
+    const processedReservations = result.rows.map(reservation => {
+      console.log(`Reservation ID ${reservation.reservationid} - Original image data:`,
+        reservation.propertyimage ? reservation.propertyimage.substring(0, 50) + '...' : 'No image');
+
+      const processedReservation = {
+        ...reservation,
+        propertyimage: reservation.propertyimage ? reservation.propertyimage.split(',') : []
+      };
+
+      console.log(`Reservation ID ${reservation.reservationid} - Processed image array length:`,
+        processedReservation.propertyimage.length);
+
+      return processedReservation;
+    });
+
+    if (processedReservations.length > 0) {
+      console.log('Sample processed reservation object:');
+      const sampleReservation = { ...processedReservations[0] };
+      if (sampleReservation.propertyimage && sampleReservation.propertyimage.length > 0) {
+        sampleReservation.propertyimage = [`${sampleReservation.propertyimage[0].substring(0, 50)}... (truncated)`,
+        `and ${sampleReservation.propertyimage.length - 1} more images`];
       }
-      
-      res.json(processedReservations);
+      console.log(JSON.stringify(sampleReservation, null, 2));
+    }
+
+    res.json(processedReservations);
   } catch (err) {
     console.error('Error fetching suggested reservations:', err);
     res.status(500).json({ message: 'Server error', success: false });
@@ -4565,25 +4564,25 @@ app.get('/suggestedReservations/:userid', async (req, res) => {
 // Fetch Published Reservation
 app.get('/publishedReservations/:userid', async (req, res) => {
   const { userid } = req.params;
-  
+
   let client;
-  
+
   try {
-      client = await pool.connect();
-  
-      const userEmail = await pool.query(
-        `
+    client = await pool.connect();
+
+    const userEmail = await pool.query(
+      `
           SELECT 
             uemail
           FROM users
           WHERE userid = $1;
         `,
-        [userid]
-      );
-  
-     const uemail = userEmail.rows[0].uemail;
-  
-     const result = await client.query(
+      [userid]
+    );
+
+    const uemail = userEmail.rows[0].uemail;
+
+    const result = await client.query(
       `
          SELECT r.*, p.*
          FROM reservation r
@@ -4591,10 +4590,10 @@ app.get('/publishedReservations/:userid', async (req, res) => {
          WHERE $1 = ANY (string_to_array(suggestedemail, ','))
          AND reservationstatus = 'Published'
        `,
-       [uemail]
-     );
-      
-     res.json(result.rows);
+      [uemail]
+    );
+
+    res.json(result.rows);
   } catch (err) {
     console.error('Error fetching published reservations:', err);
     res.status(500).json({ message: 'Server error', success: false });
@@ -4631,14 +4630,14 @@ app.get('/clusters/names', async (req, res) => {
 app.post('/clusters', async (req, res) => {
   const { clusterName, clusterState, clusterProvince } = req.body;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
-  
+
   if (!clusterName || !clusterState || !clusterProvince) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Cluster name, state, and province are required' 
+    return res.status(400).json({
+      success: false,
+      message: 'Cluster name, state, and province are required'
     });
   }
-  
+
   try {
     const result = await pool.query(
       `INSERT INTO clusters (clustername, clusterstate, clusterprovince, timestamp) 
@@ -4646,11 +4645,11 @@ app.post('/clusters', async (req, res) => {
        RETURNING *`,
       [clusterName, clusterState, clusterProvince, timestamp]
     );
-    
-    res.json({ 
-      success: true, 
-      message: 'Cluster created successfully', 
-      cluster: result.rows[0] 
+
+    res.json({
+      success: true,
+      message: 'Cluster created successfully',
+      cluster: result.rows[0]
     });
   } catch (error) {
     console.error('Error creating cluster:', error);
@@ -4662,14 +4661,14 @@ app.post('/clusters', async (req, res) => {
 app.put('/clusters/:id', async (req, res) => {
   const { id } = req.params;
   const { clusterName, clusterState, clusterProvince } = req.body;
-  
+
   if (!clusterName || !clusterState || !clusterProvince) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Cluster name, state, and province are required' 
+    return res.status(400).json({
+      success: false,
+      message: 'Cluster name, state, and province are required'
     });
   }
-  
+
   try {
     const result = await pool.query(
       `UPDATE clusters 
@@ -4678,15 +4677,15 @@ app.put('/clusters/:id', async (req, res) => {
        RETURNING *`,
       [clusterName, clusterState, clusterProvince, id]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Cluster not found' });
     }
-    
-    res.json({ 
-      success: true, 
-      message: 'Cluster updated successfully', 
-      cluster: result.rows[0] 
+
+    res.json({
+      success: true,
+      message: 'Cluster updated successfully',
+      cluster: result.rows[0]
     });
   } catch (error) {
     console.error('Error updating cluster:', error);
@@ -4697,30 +4696,30 @@ app.put('/clusters/:id', async (req, res) => {
 // DELETE a cluster
 app.delete('/clusters/:id', async (req, res) => {
   const { id } = req.params;
-  
+
   try {
     // Check if there are any properties associated with this cluster
     const propertyCheck = await pool.query(
       'SELECT COUNT(*) FROM properties WHERE clusterid = $1',
       [id]
     );
-    
+
     if (parseInt(propertyCheck.rows[0].count) > 0) {
       return res.status(400).json({
         success: false,
         message: 'Cannot delete cluster because it has associated properties'
       });
     }
-    
+
     const result = await pool.query(
       'DELETE FROM clusters WHERE clusterid = $1 RETURNING *',
       [id]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Cluster not found' });
     }
-    
+
     res.json({ success: true, message: 'Cluster deleted successfully' });
   } catch (error) {
     console.error('Error deleting cluster:', error);
@@ -4844,13 +4843,13 @@ app.post('/payment_success/:reservationid', async (req, res) => {
       ]
     );
 
-    await client.query (
+    await client.query(
       `INSERT INTO audit_trail (
           entityid, timestamp, entitytype, actiontype, action, userid, username
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [reservationid, timestamp, "Reservation", "POST", "Make Payment", creatorid, creatorUsername]
+      [reservationid, timestamp, "Reservation", "POST", "Make Payment", creatorid, creatorUsername]
     );
-    
+
     res.status(200).json({ message: 'Email sent successfully' });
   } catch (err) {
     console.error('Error sending email:', err);
