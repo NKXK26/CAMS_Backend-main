@@ -36,16 +36,22 @@ const decrypt = (encryptedText) => {
   decrypted += decipher.final('utf8');
   return decrypted;
 };
-
 const { Pool } = require("pg");
 const fs = require("fs");
+const path = require("path");
 
 let sslOptions;
 
 try {
-  const ca = fs.readFileSync(process.env.PG_SSL_CA_PATH).toString();
-  sslOptions = { rejectUnauthorized: true, ca };
-  console.log("✅ Loaded CA certificate for secure SSL connection");
+  const caPath = process.env.PG_SSL_CA_PATH;
+  const ca = fs.readFileSync(path.resolve(caPath)).toString().trim();
+
+  sslOptions = {
+    rejectUnauthorized: true,
+    ca: ca,
+  };
+
+  console.log("✅ Loaded DigitalOcean CA certificate successfully.");
 } catch (err) {
   console.warn("⚠️ Could not load CA certificate, falling back to insecure mode:", err.message);
   sslOptions = { rejectUnauthorized: false };
@@ -58,7 +64,7 @@ const pool = new Pool({
 
 pool.connect()
   .then(() => console.log("✅ PostgreSQL connected successfully"))
-  .catch(err => console.error("❌ PostgreSQL connection failed:", err));
+  .catch(err => console.error("❌ PostgreSQL connection failed:", err.message));
 
 
 const app = express();
