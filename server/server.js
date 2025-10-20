@@ -129,7 +129,7 @@ process.on('SIGINT', async () => {
   }
   process.exit();
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Registration
 app.post('/register', async (req, res) => {
   const { firstName, lastName, username, password, email, uphoneno } = req.body;
@@ -207,7 +207,7 @@ app.post('/register', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Login
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
@@ -299,7 +299,7 @@ app.post('/login', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Logout
 app.post('/logout', async (req, res) => {
   const { userid } = req.body;
@@ -343,7 +343,7 @@ app.post('/logout', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Google Login
 app.post("/google-login", async (req, res) => {
   const { token } = req.body;
@@ -500,7 +500,7 @@ app.post("/google-login", async (req, res) => {
     });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Fetch list of customers
 app.get('/users/customers', async (req, res) => {
   const { userid } = req.query;
@@ -550,7 +550,7 @@ app.get('/users/customers', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Fetch list of owners
 app.get('/users/owners', async (req, res) => {
   let client;
@@ -571,7 +571,7 @@ app.get('/users/owners', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Fetch list of moderators
 app.get('/users/moderators', async (req, res) => {
   const { userid } = req.query;
@@ -622,7 +622,7 @@ app.get('/users/moderators', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Fetch list of operators (Moderators and Administrators)
 app.get('/users/operators', async (req, res) => {
   let client;
@@ -661,7 +661,7 @@ app.get('/users/operators', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Fetch list of administrators
 app.get('/users/administrators', async (req, res) => {
   let client;
@@ -682,7 +682,7 @@ app.get('/users/administrators', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Create moderators
 app.post('/users/createModerator', async (req, res) => {
   const { firstName, lastName, username, password, email, phoneNo, country, zipCode, creatorid, creatorUsername } = req.body;
@@ -735,7 +735,7 @@ app.post('/users/createModerator', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Update users by user ID
 app.put('/users/updateUser/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -782,7 +782,7 @@ app.put('/users/updateUser/:userid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Remove users by user ID
 app.delete('/users/removeUser/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -826,7 +826,7 @@ app.delete('/users/removeUser/:userid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Suspend users by user ID
 app.put('/users/suspenduser/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -875,7 +875,7 @@ app.put('/users/suspenduser/:userid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Activate users by userid
 app.put('/users/activateUser/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -924,7 +924,7 @@ app.put('/users/activateUser/:userid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Properties Listing
 app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, res) => {
   const {
@@ -1106,7 +1106,7 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Fetch list of all property listings (Product)
 app.get('/product', async (req, res) => {
   let client;
@@ -1168,7 +1168,7 @@ app.get('/product', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Fetch list of all property listings (Dashboard)
 app.get('/propertiesListingTable', async (req, res) => {
   const username = req.query.username;
@@ -1298,7 +1298,7 @@ app.get('/propertiesListingTable', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Update an existing property listing by property ID
 app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), async (req, res) => {
   const { propertyid } = req.params;
@@ -1439,7 +1439,7 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Update Property Status API
 app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
@@ -1482,7 +1482,7 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Remove Properties Listing
 app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
   const { propertyid } = req.params;
@@ -1526,7 +1526,7 @@ app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Check user status by userID
 app.get('/checkStatus', async (req, res) => {
   const { userid } = req.query;
@@ -1562,7 +1562,7 @@ app.get('/checkStatus', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send contact us email
 app.post("/contact_us", async (req, res) => {
   const { name, email, message } = req.body;
@@ -1705,7 +1705,7 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send Booking Request Accepted Message To Customer
 app.post('/accept_booking/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
@@ -1801,7 +1801,7 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send New Room Suggestion To Customer
 app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
   const { propertyid, reservationid } = req.params;
@@ -1936,7 +1936,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
     res.status(500).json({ message: 'Failed to send email', error: err.message });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send Properties Listing Request Notification From Moderator
 app.post('/propertyListingRequest/:propertyid', async (req, res) => {
   const { propertyid } = req.params;
@@ -2014,7 +2014,7 @@ app.post('/propertyListingRequest/:propertyid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send Property Listing Request Accepted Notification
 app.post("/propertyListingAccept/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
@@ -2080,7 +2080,7 @@ app.post("/propertyListingAccept/:propertyid", async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send Property Listing Request Rejected Notification
 app.post("/propertyListingReject/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
@@ -2147,7 +2147,7 @@ app.post("/propertyListingReject/:propertyid", async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send "Suggest" Notification To Operators
 app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
   const { userids } = req.body;
@@ -2266,7 +2266,7 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
     res.status(500).json({ message: 'Failed to send email', error: err.message });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send Reservation Picked Up Notification To Original Reservation Owner
 app.post('/sendPickedUpNotification/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
@@ -2374,7 +2374,7 @@ app.post('/sendPickedUpNotification/:reservationid', async (req, res) => {
     res.status(500).json({ message: 'Failed to send email', error: err.message });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send Suggested Room Rejected Message To Operators
 app.post('/reject_suggested_room/:propertyid/', async (req, res) => {
   const { propertyid } = req.params;
@@ -2456,7 +2456,7 @@ app.post('/reject_suggested_room/:propertyid/', async (req, res) => {
     res.status(500).json({ message: 'Failed to send email', error: err.message });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Create reservation for property
 app.post('/reservation/:userid', async (req, res) => {
   const { propertyid, checkindatetime, checkoutdatetime, reservationstatus, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
@@ -2553,7 +2553,7 @@ app.post('/reservation/:userid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Fetch Book and Pay Log
 app.get('/users/booklog', async (req, res) => {
   const { userid } = req.query;
@@ -2649,7 +2649,7 @@ app.get('/users/booklog', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 app.get("/users/finance", async (req, res) => {
   const { userid } = req.query;
 
@@ -2757,7 +2757,7 @@ app.get("/users/finance", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 app.get("/users/occupancy_rate", async (req, res) => {
   const { userid } = req.query;
 
@@ -2936,7 +2936,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 app.get("/users/RevPAR", async (req, res) => {
   const { userid } = req.query;
 
@@ -3097,7 +3097,7 @@ app.get("/users/RevPAR", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 app.get("/users/cancellation_rate", async (req, res) => {
   const { userid } = req.query;
 
@@ -3210,7 +3210,7 @@ app.get("/users/cancellation_rate", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 app.get("/users/customer_retention_rate", async (req, res) => {
   const { userid } = req.query;
 
@@ -3336,7 +3336,7 @@ app.get("/users/customer_retention_rate", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 app.get("/users/guest_satisfaction_score", async (req, res) => {
   const { userid } = req.query;
 
@@ -3437,7 +3437,7 @@ app.get("/users/guest_satisfaction_score", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 app.get("/users/alos", async (req, res) => {
   const { userid } = req.query;
 
@@ -3536,7 +3536,7 @@ app.get("/users/alos", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", details: err.message });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Fetch reservations for the logged-in user
 app.get('/cart', async (req, res) => {
   const userid = req.query.userid;
@@ -3586,7 +3586,7 @@ app.get('/cart', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Get property owner's PayPal ID
 app.get('/property/owner-paypal/:propertyId', async (req, res) => {
   const propertyId = req.params.propertyId;
@@ -3649,7 +3649,7 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Fetch all reservations (Dashboard)
 app.get('/reservationTable', async (req, res) => {
   const username = req.query.username;
@@ -3724,7 +3724,7 @@ app.get('/reservationTable', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Update reservation status
 app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
@@ -3770,7 +3770,7 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Remove reservation
 app.delete('/removeReservation/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
@@ -3817,7 +3817,7 @@ app.delete('/removeReservation/:reservationid', async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error', details: err.message });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Get Properties Of Particular Administrator For "Suggest"
 app.get('/operatorProperties/:userid/:reservationid', async (req, res) => {
   const { userid, reservationid } = req.params;
@@ -3877,7 +3877,7 @@ app.get('/operatorProperties/:userid/:reservationid', async (req, res) => {
     });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Get user information
 app.get('/getUserInfo/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -3909,7 +3909,7 @@ app.get('/getUserInfo/:userid', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Get decrypted user password
 app.get('/users/getDecryptedPassword/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -3948,7 +3948,7 @@ app.get('/users/getDecryptedPassword/:userid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Forget Password
 app.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
@@ -4014,7 +4014,7 @@ app.post('/forgot-password', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Get User Details
 app.get('/users/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -4048,7 +4048,7 @@ app.get('/users/:userid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Update user profile
 app.put('/users/updateProfile/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -4100,7 +4100,7 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Upload user avatar
 app.post('/users/uploadAvatar/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -4157,7 +4157,7 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 app.post('/reviews', async (req, res) => {
   const { userid, propertyid, review, rating } = req.body;
   const { creatorUsername } = req.query;
@@ -4265,7 +4265,7 @@ app.post('/reviews', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 app.get('/reviews/:propertyid', async (req, res) => {
   const propertyid = req.params.propertyid;
 
@@ -4354,7 +4354,7 @@ app.get('/reviews/:propertyid', async (req, res) => {
         comment: row.review
       };
     });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Return consolidated response with reviews and property data
     res.status(200).json({
       reviews: reviews,
@@ -4370,7 +4370,7 @@ app.get('/reviews/:propertyid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Assign role to user
 app.post('/users/assignRole/:userid/:role', async (req, res) => {
   const { userid, role } = req.params;
@@ -4406,7 +4406,7 @@ app.post('/users/assignRole/:userid/:role', async (req, res) => {
     if (client) client.release();
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Audit Trails
 app.get("/auditTrails", async (req, res) => {
   const { userid } = req.query;
@@ -4491,7 +4491,7 @@ app.get("/auditTrails", async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Fetch Suggested Reservation
 app.get('/suggestedReservations/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -4560,7 +4560,7 @@ app.get('/suggestedReservations/:userid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Fetch Published Reservation
 app.get('/publishedReservations/:userid', async (req, res) => {
   const { userid } = req.params;
@@ -4603,7 +4603,7 @@ app.get('/publishedReservations/:userid', async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GET all clusters
 app.get('/clusters', async (req, res) => {
   try {
@@ -4614,7 +4614,7 @@ app.get('/clusters', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch clusters' });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GET unique cluster names
 app.get('/clusters/names', async (req, res) => {
   try {
@@ -4625,7 +4625,7 @@ app.get('/clusters/names', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch cluster names' });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // POST create a new cluster
 app.post('/clusters', async (req, res) => {
   const { clusterName, clusterState, clusterProvince } = req.body;
@@ -4656,7 +4656,7 @@ app.post('/clusters', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to create cluster' });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUT update a cluster
 app.put('/clusters/:id', async (req, res) => {
   const { id } = req.params;
@@ -4692,7 +4692,7 @@ app.put('/clusters/:id', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to update cluster' });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DELETE a cluster
 app.delete('/clusters/:id', async (req, res) => {
   const { id } = req.params;
@@ -4726,7 +4726,7 @@ app.delete('/clusters/:id', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to delete cluster' });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GET all categories
 app.get('/categories', async (req, res) => {
   try {
@@ -4737,7 +4737,7 @@ app.get('/categories', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch categories' });
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send Payment Successfull Message To Operator
 app.post('/payment_success/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
