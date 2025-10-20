@@ -130,7 +130,7 @@ process.on('SIGINT', async () => {
   process.exit();
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Registration
+// 1Registration
 app.post('/register', async (req, res) => {
   const { firstName, lastName, username, password, email, uphoneno } = req.body;
   let client;
@@ -208,7 +208,7 @@ app.post('/register', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Login
+//2Login
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   let client;
@@ -300,7 +300,7 @@ app.post('/login', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Logout
+//3Logout
 app.post('/logout', async (req, res) => {
   const { userid } = req.body;
   let client;
@@ -344,7 +344,7 @@ app.post('/logout', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Google Login
+// 4Google Login
 app.post("/google-login", async (req, res) => {
   const { token } = req.body;
 
@@ -501,7 +501,7 @@ app.post("/google-login", async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Fetch list of customers
+//5Fetch list of customers
 app.get('/users/customers', async (req, res) => {
   const { userid } = req.query;
   let client;
@@ -551,7 +551,7 @@ app.get('/users/customers', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Fetch list of owners
+//6 Fetch list of owners
 app.get('/users/owners', async (req, res) => {
   let client;
   try {
@@ -572,7 +572,7 @@ app.get('/users/owners', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Fetch list of moderators
+//7 Fetch list of moderators
 app.get('/users/moderators', async (req, res) => {
   const { userid } = req.query;
   let client;
@@ -623,7 +623,7 @@ app.get('/users/moderators', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Fetch list of operators (Moderators and Administrators)
+//8 Fetch list of operators (Moderators and Administrators)
 app.get('/users/operators', async (req, res) => {
   let client;
   try {
@@ -662,7 +662,7 @@ app.get('/users/operators', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Fetch list of administrators
+// 9Fetch list of administrators
 app.get('/users/administrators', async (req, res) => {
   let client;
   try {
@@ -683,7 +683,7 @@ app.get('/users/administrators', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Create moderators
+// 10Create moderators
 app.post('/users/createModerator', async (req, res) => {
   const { firstName, lastName, username, password, email, phoneNo, country, zipCode, creatorid, creatorUsername } = req.body;
   let client;
@@ -736,7 +736,7 @@ app.post('/users/createModerator', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Update users by user ID
+// 11Update users by user ID
 app.put('/users/updateUser/:userid', async (req, res) => {
   const { userid } = req.params;
   const { firstName, lastName, clusterid, username, email, phoneNo, country, zipCode, creatorid, creatorUsername } = req.body;
@@ -783,7 +783,7 @@ app.put('/users/updateUser/:userid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Remove users by user ID
+// 12Remove users by user ID
 app.delete('/users/removeUser/:userid', async (req, res) => {
   const { userid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -827,7 +827,7 @@ app.delete('/users/removeUser/:userid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Suspend users by user ID
+//13Suspend users by user ID
 app.put('/users/suspenduser/:userid', async (req, res) => {
   const { userid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -876,7 +876,7 @@ app.put('/users/suspenduser/:userid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Activate users by userid
+// 14Activate users by userid
 app.put('/users/activateUser/:userid', async (req, res) => {
   const { userid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -925,7 +925,7 @@ app.put('/users/activateUser/:userid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Properties Listing
+// 15Properties Listing
 app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, res) => {
   const {
     username,
@@ -1107,7 +1107,7 @@ app.post('/propertiesListing', upload.array('propertyImage', 10), async (req, re
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Fetch list of all property listings (Product)
+// 16Fetch list of all property listings (Product)
 app.get('/product', async (req, res) => {
   let client;
   try {
@@ -1169,7 +1169,7 @@ app.get('/product', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Fetch list of all property listings (Dashboard)
+// 17Fetch list of all property listings (Dashboard)
 app.get('/propertiesListingTable', async (req, res) => {
   const username = req.query.username;
 
@@ -1299,7 +1299,7 @@ app.get('/propertiesListingTable', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Update an existing property listing by property ID
+//18 Update an existing property listing by property ID
 app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), async (req, res) => {
   const { propertyid } = req.params;
   const {
@@ -1440,7 +1440,7 @@ app.put('/propertiesListing/:propertyid', upload.array('propertyImage', 10), asy
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Update Property Status API
+// 19Update Property Status API
 app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
   const { propertyStatus } = req.body;
@@ -1483,7 +1483,7 @@ app.patch("/updatePropertyStatus/:propertyid", async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Remove Properties Listing
+// 20Remove Properties Listing
 app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
   const { propertyid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -1527,7 +1527,7 @@ app.delete('/removePropertiesListing/:propertyid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Check user status by userID
+// 21Check user status by userID
 app.get('/checkStatus', async (req, res) => {
   const { userid } = req.query;
   let client;
@@ -1563,7 +1563,7 @@ app.get('/checkStatus', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send contact us email
+// 22Send contact us email
 app.post("/contact_us", async (req, res) => {
   const { name, email, message } = req.body;
   let client;
@@ -1603,7 +1603,7 @@ app.post("/contact_us", async (req, res) => {
   }
 });
 
-// Send Booking Request Message To Administrator Or Moderator
+// 23Send Booking Request Message To Administrator Or Moderator
 app.post('/requestBooking/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -1706,7 +1706,7 @@ app.post('/requestBooking/:reservationid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send Booking Request Accepted Message To Customer
+// 24Send Booking Request Accepted Message To Customer
 app.post('/accept_booking/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -1802,7 +1802,7 @@ app.post('/accept_booking/:reservationid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send New Room Suggestion To Customer
+// 25Send New Room Suggestion To Customer
 app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
   const { propertyid, reservationid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -1937,7 +1937,7 @@ app.post('/suggestNewRoom/:propertyid/:reservationid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send Properties Listing Request Notification From Moderator
+// 26Send Properties Listing Request Notification From Moderator
 app.post('/propertyListingRequest/:propertyid', async (req, res) => {
   const { propertyid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -2015,7 +2015,7 @@ app.post('/propertyListingRequest/:propertyid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send Property Listing Request Accepted Notification
+// 27Send Property Listing Request Accepted Notification
 app.post("/propertyListingAccept/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -2081,7 +2081,7 @@ app.post("/propertyListingAccept/:propertyid", async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send Property Listing Request Rejected Notification
+// 28Send Property Listing Request Rejected Notification
 app.post("/propertyListingReject/:propertyid", async (req, res) => {
   const { propertyid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -2148,7 +2148,7 @@ app.post("/propertyListingReject/:propertyid", async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send "Suggest" Notification To Operators
+// 29Send "Suggest" Notification To Operators
 app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
   const { userids } = req.body;
   const { reservationid } = req.params;
@@ -2267,7 +2267,7 @@ app.post('/sendSuggestNotification/:reservationid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send Reservation Picked Up Notification To Original Reservation Owner
+// 30Send Reservation Picked Up Notification To Original Reservation Owner
 app.post('/sendPickedUpNotification/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -2375,7 +2375,7 @@ app.post('/sendPickedUpNotification/:reservationid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send Suggested Room Rejected Message To Operators
+// 31Send Suggested Room Rejected Message To Operators
 app.post('/reject_suggested_room/:propertyid/', async (req, res) => {
   const { propertyid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -2457,7 +2457,7 @@ app.post('/reject_suggested_room/:propertyid/', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Create reservation for property
+// 32Create reservation for property
 app.post('/reservation/:userid', async (req, res) => {
   const { propertyid, checkindatetime, checkoutdatetime, reservationstatus, request, totalprice, rcfirstname, rclastname, rcemail, rcphoneno, rctitle } = req.body;
   const userid = req.params.userid;
@@ -2554,7 +2554,7 @@ app.post('/reservation/:userid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Fetch Book and Pay Log
+// 33Fetch Book and Pay Log
 app.get('/users/booklog', async (req, res) => {
   const { userid } = req.query;
 
@@ -2650,6 +2650,7 @@ app.get('/users/booklog', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//34 Get user fianance data
 app.get("/users/finance", async (req, res) => {
   const { userid } = req.query;
 
@@ -2758,6 +2759,7 @@ app.get("/users/finance", async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//35 Get user occupancy rate data
 app.get("/users/occupancy_rate", async (req, res) => {
   const { userid } = req.query;
 
@@ -2937,6 +2939,7 @@ app.get("/users/occupancy_rate", async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//36 Get user RevPar rate data
 app.get("/users/RevPAR", async (req, res) => {
   const { userid } = req.query;
 
@@ -3098,6 +3101,7 @@ app.get("/users/RevPAR", async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//37 Get user cancellation rate data
 app.get("/users/cancellation_rate", async (req, res) => {
   const { userid } = req.query;
 
@@ -3211,6 +3215,7 @@ app.get("/users/cancellation_rate", async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//38 Get user customer retention rate data
 app.get("/users/customer_retention_rate", async (req, res) => {
   const { userid } = req.query;
 
@@ -3337,6 +3342,7 @@ app.get("/users/customer_retention_rate", async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//39 Get user guest satisfaction score data
 app.get("/users/guest_satisfaction_score", async (req, res) => {
   const { userid } = req.query;
 
@@ -3438,6 +3444,7 @@ app.get("/users/guest_satisfaction_score", async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//40 Get user Alos rate data
 app.get("/users/alos", async (req, res) => {
   const { userid } = req.query;
 
@@ -3537,7 +3544,7 @@ app.get("/users/alos", async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Fetch reservations for the logged-in user
+// 41Fetch reservations for the logged-in user
 app.get('/cart', async (req, res) => {
   const userid = req.query.userid;
 
@@ -3587,7 +3594,7 @@ app.get('/cart', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Get property owner's PayPal ID
+// 42Get property owner's PayPal ID
 app.get('/property/owner-paypal/:propertyId', async (req, res) => {
   const propertyId = req.params.propertyId;
 
@@ -3650,7 +3657,7 @@ app.get('/property/owner-paypal/:propertyId', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Fetch all reservations (Dashboard)
+// 43Fetch all reservations (Dashboard)
 app.get('/reservationTable', async (req, res) => {
   const username = req.query.username;
 
@@ -3725,7 +3732,7 @@ app.get('/reservationTable', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Update reservation status
+// 44Update reservation status
 app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
   const { reservationStatus } = req.body;
@@ -3771,7 +3778,7 @@ app.patch('/updateReservationStatus/:reservationid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Remove reservation
+// 45Remove reservation
 app.delete('/removeReservation/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -3818,7 +3825,7 @@ app.delete('/removeReservation/:reservationid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Get Properties Of Particular Administrator For "Suggest"
+//46 Get Properties Of Particular Administrator For "Suggest"
 app.get('/operatorProperties/:userid/:reservationid', async (req, res) => {
   const { userid, reservationid } = req.params;
   let client;
@@ -3878,7 +3885,7 @@ app.get('/operatorProperties/:userid/:reservationid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Get user information
+// 47Get user information
 app.get('/getUserInfo/:userid', async (req, res) => {
   const { userid } = req.params;
   let client;
@@ -3910,7 +3917,7 @@ app.get('/getUserInfo/:userid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Get decrypted user password
+// 48Get decrypted user password
 app.get('/users/getDecryptedPassword/:userid', async (req, res) => {
   const { userid } = req.params;
   let client;
@@ -3949,7 +3956,7 @@ app.get('/users/getDecryptedPassword/:userid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Forget Password
+// 49Forget Password
 app.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
 
@@ -4015,7 +4022,7 @@ app.post('/forgot-password', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Get User Details
+// 50Get User Details
 app.get('/users/:userid', async (req, res) => {
   const { userid } = req.params;
 
@@ -4049,7 +4056,7 @@ app.get('/users/:userid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Update user profile
+// 51Update user profile
 app.put('/users/updateProfile/:userid', async (req, res) => {
   const { userid } = req.params;
   const { username, password, ufirstname, ulastname, udob, utitle, ugender, uemail, uphoneno, ucountry, uzipcode, paypalid } = req.body;
@@ -4101,7 +4108,7 @@ app.put('/users/updateProfile/:userid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Upload user avatar
+// 52Upload user avatar
 app.post('/users/uploadAvatar/:userid', async (req, res) => {
   const { userid } = req.params;
   const { uimage } = req.body;
@@ -4158,6 +4165,7 @@ app.post('/users/uploadAvatar/:userid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 53Add a review for a property
 app.post('/reviews', async (req, res) => {
   const { userid, propertyid, review, rating } = req.body;
   const { creatorUsername } = req.query;
@@ -4266,6 +4274,7 @@ app.post('/reviews', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 54Get reviews for a propertyID
 app.get('/reviews/:propertyid', async (req, res) => {
   const propertyid = req.params.propertyid;
 
@@ -4371,7 +4380,7 @@ app.get('/reviews/:propertyid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Assign role to user
+// 55Assign role to user
 app.post('/users/assignRole/:userid/:role', async (req, res) => {
   const { userid, role } = req.params;
   const { creatorid, creatorUsername } = req.query;
@@ -4407,7 +4416,7 @@ app.post('/users/assignRole/:userid/:role', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Audit Trails
+// 56Audit Trails
 app.get("/auditTrails", async (req, res) => {
   const { userid } = req.query;
 
@@ -4492,7 +4501,7 @@ app.get("/auditTrails", async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Fetch Suggested Reservation
+// 57Fetch Suggested Reservation
 app.get('/suggestedReservations/:userid', async (req, res) => {
   const { userid } = req.params;
 
@@ -4561,7 +4570,7 @@ app.get('/suggestedReservations/:userid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Fetch Published Reservation
+// 58Fetch Published Reservation
 app.get('/publishedReservations/:userid', async (req, res) => {
   const { userid } = req.params;
 
@@ -4604,7 +4613,7 @@ app.get('/publishedReservations/:userid', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// GET all clusters
+// 59GET all clusters
 app.get('/clusters', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM clusters ORDER BY clustername');
@@ -4615,7 +4624,7 @@ app.get('/clusters', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// GET unique cluster names
+// 60GET unique cluster names
 app.get('/clusters/names', async (req, res) => {
   try {
     const result = await pool.query('SELECT DISTINCT clustername FROM clusters ORDER BY clustername');
@@ -4626,7 +4635,7 @@ app.get('/clusters/names', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// POST create a new cluster
+// 61POST create a new cluster
 app.post('/clusters', async (req, res) => {
   const { clusterName, clusterState, clusterProvince } = req.body;
   const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
@@ -4657,7 +4666,7 @@ app.post('/clusters', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// PUT update a cluster
+//62 PUT update a cluster
 app.put('/clusters/:id', async (req, res) => {
   const { id } = req.params;
   const { clusterName, clusterState, clusterProvince } = req.body;
@@ -4693,7 +4702,7 @@ app.put('/clusters/:id', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// DELETE a cluster
+// 63DELETE a cluster
 app.delete('/clusters/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -4727,7 +4736,7 @@ app.delete('/clusters/:id', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// GET all categories
+// 64GET all categories
 app.get('/categories', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM categories ORDER BY categoryname');
@@ -4738,7 +4747,7 @@ app.get('/categories', async (req, res) => {
   }
 });
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send Payment Successfull Message To Operator
+// 65Send Payment Successfull Message To Operator
 app.post('/payment_success/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
   const { creatorid, creatorUsername } = req.query;
