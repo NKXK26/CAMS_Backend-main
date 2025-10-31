@@ -1,4 +1,6 @@
-// server.js
+// ====================
+// 📦 Imports
+// ====================
 const express = require("express");
 const sql = require("mssql");
 const cors = require("cors");
@@ -15,6 +17,19 @@ require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+
+// ====================
+// 🌐 CORS Setup
+// ====================
+app.use(cors({
+  origin: ["http://localhost:5173", "http://152.42.248.79:5173"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
+
+// Handle preflight requests
+app.options("*", cors());
 
 // ====================
 // 🔒 Encryption Setup
@@ -61,15 +76,6 @@ pool.connect()
   .catch((err) => console.error("❌ PostgreSQL connection failed:", err.message));
 
 // ====================
-// 🌐 CORS Setup
-// ====================
-app.use(cors({
-  origin: ["http://localhost:5173", "http://152.42.248.79:5173"], // frontend origins
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
-
-// ====================
 // 🧱 Middleware Setup
 // ====================
 app.use(express.json());
@@ -103,11 +109,161 @@ app.get("/", async (req, res) => {
   }
 });
 
-// Example login route (adjust to your own)
-app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  console.log("Login attempt:", email);
-  res.json({ success: true });
+// ====================
+// 1️⃣ Registration
+// ====================
+app.post('/register', async (req, res) => {
+  const { firstName, lastName, username, password, email, uphoneno } = req.body;
+  let client;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+
+  try {
+    client = await pool.connect();
+
+    const checkUserQuery = {
+      text: `
+        SELECT username, uemail FROM users
+        WHERE username = $1 OR uemail = $2
+      `,
+      values: [username, email]
+    };
+
+    const checkResult = await client.query(checkUserQuery);
+
+    if (checkResult.rows.length > 0) {
+      return res.status(409).json({ message: 'Username or email already exists', success: false });
+    }
+
+    // Encrypt the password
+    const encryptedPassword = encrypt(password);
+
+    const insertUserQuery = {
+      text: `
+        INSERT INTO users (
+          username, password, uemail, utitle, usergroup, ustatus, uactivation, ufirstname, ulastname, clusterid, uphoneno
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING userid
+      `,
+      values: [
+        username,
+        encryptedPassword,
+        email,
+        "Mr.",
+        'Customer',
+        'registered',
+        'Active',
+        firstName,
+        lastName,
+        '1',
+        uphoneno
+      ]
+    };
+
+    const userQueryResult = await client.query(insertUserQuery);
+    const userid = userQueryResult.rows[0].userid;
+
+    await client.query(
+      `INSERT INTO audit_trail (
+            entityid, timestamp, entitytype, actiontype, action, userid, username
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userid, timestamp, "Users", "POST", "Register An Account", userid, username]
+    );
+
+    res.status(201).json({ message: 'User registered successfully', success: true });
+  } catch (err) {
+    console.error('Error during registration:', err.message);
+    res.status(500).json({ message: 'Server error', success: false });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// ====================
+// 2️⃣ Login
+// ====================
+const failedAttempts = {}; // track failed logins
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  let client;
+  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
+
+  try {
+    client = await pool.connect();
+
+    const result = await client.query(`
+      SELECT userid, usergroup, uactivation, password 
+      FROM users 
+      WHERE (username = $1 OR uemail = $1)
+    `, [username]);
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: 'Invalid username or password', success: false });
+    }
+
+    const user = result.rows[0];
+
+    if (user.uactivation === 'Inactive') {
+      return res.status(403).json({
+        message: 'This account has been suspended. Please contact the administrator.',
+        success: false
+      });
+    }
+
+    // Decrypt password and check match
+    const decryptedPassword = decrypt(user.password);
+    const passwordMatch = (password === decryptedPassword);
+
+    if (passwordMatch) {
+      delete failedAttempts[username];
+
+      await client.query(`
+        UPDATE users SET ustatus = 'login' WHERE username = $1 OR uemail = $1
+      `, [username]);
+
+      const userid = user.userid;
+
+      await client.query(
+        `INSERT INTO audit_trail (
+              entityid, timestamp, entitytype, actiontype, action, userid, username
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [userid, timestamp, "Users", "POST", "Login", userid, username]
+      );
+
+      return res.status(200).json({
+        message: 'Login Successful',
+        success: true,
+        userid: user.userid,
+        usergroup: user.usergroup,
+        uactivation: user.uactivation
+      });
+    } else {
+      const now = Date.now();
+      failedAttempts[username] = failedAttempts[username] || { count: 0, lastAttemptTime: now };
+      failedAttempts[username].count++;
+      failedAttempts[username].lastAttemptTime = now;
+
+      if (failedAttempts[username].count >= 5) {
+        await client.query(`
+          UPDATE users SET uactivation = 'Inactive'
+          WHERE username = $1 OR uemail = $1
+        `, [username]);
+
+        delete failedAttempts[username];
+        return res.status(403).json({ message: 'Account locked due to too many failed login attempts.', success: false });
+      }
+
+      return res.status(401).json({ message: 'Invalid username or password', success: false });
+    }
+  } catch (err) {
+    console.error('Login Error:', err);
+    res.status(500).json({ message: 'Server error', success: false });
+  } finally {
+    if (client) client.release();
+  }
 });
 
 // ====================
