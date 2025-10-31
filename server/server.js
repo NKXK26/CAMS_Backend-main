@@ -64,12 +64,9 @@ pool.connect()
 // 🌐 CORS Setup
 // ====================
 app.use(cors({
-  origin: [
-    "http://localhost:5173",                 // local dev
-    "https://squid-app-8fsll.ondigitalocean.app" // your deployed frontend
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
+  origin: ["http://localhost:5173", "http://152.42.248.79:5173"], // frontend origins
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 // ====================
