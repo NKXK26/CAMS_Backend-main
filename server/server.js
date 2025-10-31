@@ -67,7 +67,15 @@ pool.connect()
 
 
 const app = express();
+import cors from "cors";
+import express from "express";
 
+// Allow  frontend domain
+app.use(cors({
+  origin: ["https://squid-app-8fsll.ondigitalocean.app/"],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
 
 const getDefaultAvatarBase64 = () => {
   return new Promise((resolve, reject) => {
@@ -1602,7 +1610,7 @@ app.post("/contact_us", async (req, res) => {
     }
   }
 });
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 23Send Booking Request Message To Administrator Or Moderator
 app.post('/requestBooking/:reservationid', async (req, res) => {
   const { reservationid } = req.params;
