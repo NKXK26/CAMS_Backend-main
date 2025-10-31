@@ -1,55 +1,50 @@
-const express = require('express');
-const sql = require('mssql');
-const cors = require('cors');
-const multer = require('multer');
-const nodemailer = require('nodemailer');
+// server.js
+const express = require("express");
+const sql = require("mssql");
+const cors = require("cors");
+const multer = require("multer");
+const nodemailer = require("nodemailer");
 const { OAuth2Client } = require("google-auth-library");
-const client = new OAuth2Client("959435224005-dd10ungqndjhjki131j8t6ede5qav4up.apps.googleusercontent.com");
-const fs = require('fs');
-const path = require('path');
-const { Pool } = require('pg');
-const sharp = require('sharp');
-require("dotenv").config({ path: path.resolve(__dirname, '.env') });
-const bcrypt = require('bcryptjs');
-const saltRounds = 10;
+const fs = require("fs");
+const path = require("path");
+const { Pool } = require("pg");
+const sharp = require("sharp");
+const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
-// const connectionString = process.env.DATABASE_URL ;
-const crypto = require('crypto');
-const PORT = process.env.PORT || 3000;
+const app = express();
+const PORT = process.env.PORT || 8080;
 
-// Add encryption and decryption keys and functions
-const encryptionKey = Buffer.from('12345678901234567890123456789012', 'utf8'); // 256-bit key
-const iv = Buffer.from('1234567890123456', 'utf8'); // Initialization vector
+// ====================
+// 🔒 Encryption Setup
+// ====================
+const encryptionKey = Buffer.from("12345678901234567890123456789012", "utf8");
+const iv = Buffer.from("1234567890123456", "utf8");
 
-// Encryption function
 const encrypt = (text) => {
-  const cipher = crypto.createCipheriv('aes-256-cbc', encryptionKey, iv);
-  let encrypted = cipher.update(text, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
+  const cipher = crypto.createCipheriv("aes-256-cbc", encryptionKey, iv);
+  let encrypted = cipher.update(text, "utf8", "hex");
+  encrypted += cipher.final("hex");
   return encrypted;
 };
 
-// Decryption function
 const decrypt = (encryptedText) => {
-  const decipher = crypto.createDecipheriv('aes-256-cbc', encryptionKey, iv);
-  let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
+  const decipher = crypto.createDecipheriv("aes-256-cbc", encryptionKey, iv);
+  let decrypted = decipher.update(encryptedText, "hex", "utf8");
+  decrypted += decipher.final("utf8");
   return decrypted;
 };
-const { Pool } = require("pg");
-const fs = require("fs");
-const path = require("path");
 
+// ====================
+// 🗄️ PostgreSQL Setup
+// ====================
 let sslOptions;
-
 try {
-  const caPath = process.env.PG_SSL_CA_PATH;
-
   sslOptions = {
     rejectUnauthorized: true,
     ca: process.env.DATABASE_CA_CERT,
   };
-
   console.log("✅ Loaded DigitalOcean CA certificate successfully.");
 } catch (err) {
   console.warn("⚠️ Could not load CA certificate, falling back to insecure mode:", err.message);
@@ -63,40 +58,41 @@ const pool = new Pool({
 
 pool.connect()
   .then(() => console.log("✅ PostgreSQL connected successfully"))
-  .catch(err => console.error("❌ PostgreSQL connection failed:", err.message));
+  .catch((err) => console.error("❌ PostgreSQL connection failed:", err.message));
 
-
-const app = express();
-import cors from "cors";
-import express from "express";
-
-// Allow  frontend domain
+// ====================
+// 🌐 CORS Setup
+// ====================
 app.use(cors({
-  origin: ["https://squid-app-8fsll.ondigitalocean.app/"],
+  origin: [
+    "http://localhost:5173",                 // local dev
+    "https://squid-app-8fsll.ondigitalocean.app" // your deployed frontend
+  ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
 
-const getDefaultAvatarBase64 = () => {
-  return new Promise((resolve, reject) => {
-    const defaultAvatarPath = path.join(__dirname, '/public/avatar.png');
-    fs.readFile(defaultAvatarPath, (err, data) => {
-      if (err) {
-        reject(err);
-      } else {
-        const base64Data = data.toString('base64');
-        resolve(base64Data);
-      }
-    });
-  });
-};
+// ====================
+// 🧱 Middleware Setup
+// ====================
+app.use(express.json());
 
-const generateRandomSixDigits = () => Math.floor(100000 + Math.random() * 900000);
+// ====================
+// 📸 File Upload Setup
+// ====================
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: {
+    fieldSize: 25 * 1024 * 1024,
+    fileSize: 25 * 1024 * 1024,
+  },
+});
 
-const failedAttempts = {};
-
-app.get('/', async (req, res) => {
-  // console.log('DATABASE_URL:', process.env.DATABASE_URL);
+// ====================
+// 🧩 Example Routes
+// ====================
+app.get("/", async (req, res) => {
   let client;
   try {
     client = await pool.connect();
@@ -104,39 +100,41 @@ app.get('/', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error', success: false });
+    res.status(500).json({ message: "Server error", success: false });
   } finally {
-    if (client) {
-      client.release();
-    }
+    if (client) client.release();
   }
 });
 
-app.use(express.json());
-app.use(cors());
-
-// Set up multer for file uploads with memory storage and size limits
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage: storage,
-  limits: {
-    fieldSize: 25 * 1024 * 1024,
-    fileSize: 25 * 1024 * 1024
-  }
+// Example login route (adjust to your own)
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  console.log("Login attempt:", email);
+  res.json({ success: true });
 });
 
-// Close database connection pool on server shutdown
-process.on('SIGINT', async () => {
+// ====================
+// 🔌 Start Server
+// ====================
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
+// ====================
+// 🧹 Graceful Shutdown
+// ====================
+process.on("SIGINT", async () => {
   if (pool) {
     try {
       await pool.end();
-      console.log('Database connection pool closed');
+      console.log("Database connection pool closed");
     } catch (err) {
-      console.error('Error closing the connection pool:', err);
+      console.error("Error closing the connection pool:", err);
     }
   }
   process.exit();
 });
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 1Registration
 app.post('/register', async (req, res) => {
