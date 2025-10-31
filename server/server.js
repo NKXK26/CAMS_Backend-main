@@ -93,7 +93,7 @@ const upload = multer({
 });
 
 // ====================
-// 🧩 Example Routes
+// 🧩 Example Route
 // ====================
 app.get("/", async (req, res) => {
   let client;
@@ -110,7 +110,7 @@ app.get("/", async (req, res) => {
 });
 
 // ====================
-// 1️⃣ Registration
+// 1️⃣ Registration Route
 // ====================
 app.post('/register', async (req, res) => {
   const { firstName, lastName, username, password, email, uphoneno } = req.body;
@@ -121,20 +121,15 @@ app.post('/register', async (req, res) => {
     client = await pool.connect();
 
     const checkUserQuery = {
-      text: `
-        SELECT username, uemail FROM users
-        WHERE username = $1 OR uemail = $2
-      `,
+      text: `SELECT username, uemail FROM users WHERE username = $1 OR uemail = $2`,
       values: [username, email]
     };
 
     const checkResult = await client.query(checkUserQuery);
-
     if (checkResult.rows.length > 0) {
       return res.status(409).json({ message: 'Username or email already exists', success: false });
     }
 
-    // Encrypt the password
     const encryptedPassword = encrypt(password);
 
     const insertUserQuery = {
@@ -160,14 +155,12 @@ app.post('/register', async (req, res) => {
       ]
     };
 
-    const userQueryResult = await client.query(insertUserQuery);
-    const userid = userQueryResult.rows[0].userid;
+    const result = await client.query(insertUserQuery);
+    const userid = result.rows[0].userid;
 
     await client.query(
-      `INSERT INTO audit_trail (
-            entityid, timestamp, entitytype, actiontype, action, userid, username
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      `INSERT INTO audit_trail (entityid, timestamp, entitytype, actiontype, action, userid, username)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [userid, timestamp, "Users", "POST", "Register An Account", userid, username]
     );
 
@@ -181,9 +174,9 @@ app.post('/register', async (req, res) => {
 });
 
 // ====================
-// 2️⃣ Login
+// 2️⃣ Login Route
 // ====================
-const failedAttempts = {}; // track failed logins
+const failedAttempts = {};
 
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
@@ -212,24 +205,18 @@ app.post('/login', async (req, res) => {
       });
     }
 
-    // Decrypt password and check match
     const decryptedPassword = decrypt(user.password);
     const passwordMatch = (password === decryptedPassword);
 
     if (passwordMatch) {
       delete failedAttempts[username];
 
-      await client.query(`
-        UPDATE users SET ustatus = 'login' WHERE username = $1 OR uemail = $1
-      `, [username]);
+      await client.query(`UPDATE users SET ustatus = 'login' WHERE username = $1 OR uemail = $1`, [username]);
 
       const userid = user.userid;
-
       await client.query(
-        `INSERT INTO audit_trail (
-              entityid, timestamp, entitytype, actiontype, action, userid, username
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        `INSERT INTO audit_trail (entityid, timestamp, entitytype, actiontype, action, userid, username)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [userid, timestamp, "Users", "POST", "Login", userid, username]
       );
 
@@ -288,176 +275,6 @@ process.on("SIGINT", async () => {
   process.exit();
 });
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 1Registration
-app.post('/register', async (req, res) => {
-  const { firstName, lastName, username, password, email, uphoneno } = req.body;
-  let client;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
-
-  try {
-    client = await pool.connect();
-
-    const checkUserQuery = {
-      text: `
-        SELECT username, uemail FROM users
-        WHERE username = $1 OR uemail = $2
-      `,
-      values: [username, email]
-    };
-
-    const checkResult = await client.query(checkUserQuery);
-
-    if (checkResult.rows.length > 0) {
-      return res.status(409).json({ message: 'Username or email already exists', success: false });
-    }
-
-    // Encrypt the password
-    const encryptedPassword = encrypt(password);
-    const defaultAvatarBase64 = await getDefaultAvatarBase64();
-
-    const insertUserQuery = {
-      text: `
-        INSERT INTO users (
-          username, password, uemail, utitle, usergroup, ustatus, uactivation, uimage,
-          ufirstname, ulastname, clusterid, uphoneno
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        RETURNING userid
-      `,
-      values: [
-        username,
-        encryptedPassword,
-        email,
-        "Mr.",
-        'Customer',
-        'registered',
-        'Active',
-        defaultAvatarBase64,
-        firstName,
-        lastName,
-        '1',
-        uphoneno
-      ]
-    };
-
-    const userQueryResult = await client.query(insertUserQuery);
-
-    const userid = userQueryResult.rows[0].userid;
-
-    const registerAuditTrail = await client.query(
-      `INSERT INTO audit_trail (
-            entityid, timestamp, entitytype, actiontype, action, userid, username
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        userid, timestamp, "Users", "POST", "Register An Account", userid, username
-      ]
-    );
-
-    res.status(201).json({ message: 'User registered successfully', success: true });
-  } catch (err) {
-    console.error('Error during registration:', err.message);
-    console.error(err.stack);
-    res.status(500).json({ message: 'Server error', success: false });
-  } finally {
-    if (client) {
-      client.release();
-    }
-  }
-});
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//2Login
-app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  let client;
-  const timestamp = new Date(Date.now() + 8 * 60 * 60 * 1000);
-
-  try {
-    client = await pool.connect();
-
-    const result = await client.query(`
-      SELECT userid, usergroup, uactivation, password 
-      FROM users 
-      WHERE (username = $1 OR uemail = $1)
-    `, [username]);
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ message: 'Invalid username or password', success: false });
-    }
-
-    const user = result.rows[0];
-
-    if (user.uactivation === 'Inactive') {
-      return res.status(403).json({ message: 'This account has been suspended. Please try to contact the administrator to activate your account.', success: false });
-    }
-
-    // Decrypt the password
-    try {
-      const decryptedPassword = decrypt(user.password);
-      const passwordMatch = (password === decryptedPassword);
-
-      if (passwordMatch) {
-        delete failedAttempts[username]; // or email
-        await client.query(`
-          UPDATE users SET ustatus = 'login' WHERE username = $1 OR uemail = $1
-        `, [username]);
-
-        const userid = user.userid;
-
-        const loginAuditTrail = await client.query(
-          `INSERT INTO audit_trail (
-                entityid, timestamp, entitytype, actiontype, action, userid, username
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [
-            userid, timestamp, "Users", "POST", "Login", userid, username
-          ]
-        );
-
-        return res.status(200).json({
-          message: 'Login Successful',
-          success: true,
-          userid: user.userid,
-          usergroup: user.usergroup,
-          uactivation: user.uactivation
-        });
-      } else {
-        const now = Date.now();
-
-        if (!failedAttempts[username]) {
-          failedAttempts[username] = { count: 1, lastAttemptTime: now };
-        } else {
-          failedAttempts[username].count++;
-          failedAttempts[username].lastAttemptTime = now;
-        }
-
-        if (failedAttempts[username].count >= 5) {
-
-          await client.query(`
-            UPDATE users SET uactivation = 'Inactive'
-            WHERE username = $1 OR uemail = $1
-          `, [username]);
-
-          delete failedAttempts[username];
-
-          return res.status(403).json({ message: 'Account locked due to too many failed login attempts.', success: false });
-        }
-        return res.status(401).json({ message: 'Invalid username or password', success: false });
-      }
-    } catch (decryptError) {
-      console.error('Error decrypting password:', decryptError);
-      return res.status(401).json({ message: 'Invalid username or password', success: false });
-    }
-  } catch (err) {
-    console.error('Login Error:', err);
-    res.status(500).json({ message: 'Server error', success: false });
-  } finally {
-    if (client) {
-      client.release();
-    }
-  }
-});
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //3Logout
 app.post('/logout', async (req, res) => {
