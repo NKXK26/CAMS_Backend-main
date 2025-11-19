@@ -4846,9 +4846,3 @@ app.post('/payment_success/:reservationid', async (req, res) => {
   }
 });
 
-// GET unique category names
-
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
